@@ -26,12 +26,6 @@ var errCableInInitContext = common.NewInitContextError("using cable in the init 
 
 type Cable struct{}
 
-type connectOptions struct {
-	headers map[string]string
-	tags    map[string]string
-	codec   string
-}
-
 // Connect connects to the websocket, creates and starts client, and returns it to the js.
 func (r *Cable) Connect(ctx context.Context, url string, opts goja.Value) *Client {
 	state := lib.GetState(ctx)
@@ -39,13 +33,17 @@ func (r *Cable) Connect(ctx context.Context, url string, opts goja.Value) *Clien
 		panic(errCableInInitContext)
 	}
 
-	tags, header, codec := r.parseOpts(ctx, state, opts)
-	wsd := createDialer(state)
+	cOpts, err := parseOptions(ctx, opts)
+	if err != nil {
+		panic(err)
+	}
 
+	wsd := createDialer(state, cOpts.handshakeTimeout())
 	connectionStart := time.Now()
-	conn, httpResponse, connErr := wsd.DialContext(ctx, url, header)
+	conn, httpResponse, connErr := wsd.DialContext(ctx, url, cOpts.header())
 	connectionEnd := time.Now()
 
+	tags := cOpts.appendTags(state.CloneTags())
 	if state.Options.SystemTags.Has(stats.TagIP) && conn != nil && conn.RemoteAddr() != nil {
 		if ip, _, err := net.SplitHostPort(conn.RemoteAddr().String()); err == nil {
 			tags["ip"] = ip
@@ -80,14 +78,17 @@ func (r *Cable) Connect(ctx context.Context, url string, opts goja.Value) *Clien
 	}
 
 	client := Client{
-		ctx:        ctx,
-		codec:      codec,
-		conn:       conn,
-		channels:   make(map[string]*Channel),
-		readCh:     make(chan *cableMsg),
-		errorCh:    make(chan error),
-		closeCh:    make(chan int),
-		sampleTags: sampleTags,
+		ctx:           ctx,
+		conn:          conn,
+		codec:         cOpts.codec(),
+		logger:        state.Logger.WithField("source", "cable"),
+		channels:      make(map[string]*Channel),
+		readCh:        make(chan *cableMsg),
+		errorCh:       make(chan error),
+		closeCh:       make(chan int),
+		recTimeout:    cOpts.recTimeout(),
+		sampleTags:    sampleTags,
+		samplesOutput: state.Samples,
 	}
 
 	client.start()
@@ -95,37 +96,7 @@ func (r *Cable) Connect(ctx context.Context, url string, opts goja.Value) *Clien
 	return &client
 }
 
-// TODO refactor it?
-func (r *Cable) parseOpts(ctx context.Context, state *lib.State, opts goja.Value) (map[string]string, http.Header, *Codec) {
-	tags := state.CloneTags()
-	codec := JSONCodec
-	var header http.Header
-
-	if !goja.IsUndefined(opts) && !goja.IsNull(opts) {
-		rt := common.GetRuntime(ctx)
-		parsedOpts, ok := opts.ToObject(rt).Export().(connectOptions)
-		if !ok {
-			panic("Unknown connect options")
-		}
-		if len(parsedOpts.headers) > 0 {
-			header = http.Header{}
-			for k, v := range parsedOpts.headers {
-				header.Set(k, v)
-			}
-		}
-		if len(parsedOpts.tags) > 0 {
-			for k, v := range parsedOpts.tags {
-				tags[k] = v
-			}
-		}
-		if parsedOpts.codec == "msgpack" {
-			codec = MsgPackCodec
-		}
-	}
-	return tags, header, codec
-}
-
-func createDialer(state *lib.State) websocket.Dialer {
+func createDialer(state *lib.State, handshakeTimeout time.Duration) websocket.Dialer {
 	// Overriding the NextProtos to avoid talking http2
 	var tlsConfig *tls.Config
 	if state.TLSConfig != nil {
@@ -134,7 +105,7 @@ func createDialer(state *lib.State) websocket.Dialer {
 	}
 
 	wsd := websocket.Dialer{
-		HandshakeTimeout: time.Second * 60, // TODO: configurable
+		HandshakeTimeout: handshakeTimeout,
 		// Pass a custom net.DialContext function to websocket.Dialer that will substitute
 		// the underlying net.Conn with k6 tracked netext.Conn
 		NetDialContext:  state.Dialer.DialContext,

@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.k6.io/k6/lib/metrics"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 	"go.k6.io/k6/stats"
 )
 
@@ -28,9 +31,12 @@ type Client struct {
 	errorCh chan error
 	closeCh chan int
 
-	mu sync.Mutex
+	mu         sync.Mutex
+	logger     *logrus.Entry
+	recTimeout time.Duration
 
 	sampleTags *stats.SampleTags
+	samplesOutput chan<- stats.SampleContainer
 }
 
 // Subscribe creates and returns Channel
@@ -41,7 +47,7 @@ func (c *Client) Subscribe(channelName string) (*Channel, error) {
 	identifier := fmt.Sprintf("{\"channel\":\"%s\"}", channelName)
 
 	if c.channels[identifier] != nil {
-		fmt.Printf("already subscribed to `%v` channel\n", channelName)
+		c.logger.Errorf("already subscribed to `%v` channel\n", channelName)
 		return c.channels[identifier], nil
 	}
 
@@ -49,16 +55,36 @@ func (c *Client) Subscribe(channelName string) (*Channel, error) {
 		return nil, err
 	}
 
-	channel := &Channel{client: c, identifier: identifier, readCh: make(chan *cableMsg)}
+	channel := &Channel{client: c, identifier: identifier, readCh: make(chan *cableMsg), confCh: make(chan bool)}
 	c.channels[identifier] = channel
 
-	fmt.Printf("subscribed to `%v`\n", channelName)
-
-	return channel, nil
+	timer := time.After(c.recTimeout)
+	for {
+		select {
+		case confirmed := <-channel.confCh:
+			if confirmed {
+				c.logger.Debugf("subscribed to `%v`\n", channelName)
+				return channel, nil
+			}
+			c.logger.Errorf("subscription to `%v`: rejected\n", channelName)
+			return nil, errors.New("subscription rejected")
+		case <-timer:
+			c.logger.Errorf("subscription to `%v`: timeout exceeded\n", channelName)
+			return nil, errors.New("subscription timeout exceeded")
+		}
+	}
 }
 
 func (c *Client) send(msg *cableMsg) error {
-	return c.codec.Send(c.conn, msg)
+	err := c.codec.Send(c.conn, msg)
+	stats.PushIfNotDone(c.ctx, c.samplesOutput, stats.Sample{
+		Metric: metrics.WSMessagesSent,
+		Time:   time.Now(),
+		Tags:   c.sampleTags,
+		Value:  1,
+	})
+
+	return err
 }
 
 // start waits for the welcome message and then starts receive and handle loops.
@@ -73,17 +99,23 @@ func (c *Client) handleLoop() {
 		select {
 		case msg := <-c.readCh:
 			if c.channels[msg.Identifier] != nil {
-				c.channels[msg.Identifier].readCh <- msg
+				switch msg.Type {
+				case "confirm_subscription":
+					c.channels[msg.Identifier].confCh <- true
+				case "reject_subscription":
+					c.channels[msg.Identifier].confCh <- false
+				default:
+					c.channels[msg.Identifier].readCh <- msg
+				}
 			}
 		case err := <-c.errorCh:
 			// TODO: pass errors to the js script?
-			fmt.Printf("Websocket error: %v", err)
+			c.logger.Errorf("websocket error: %v", err)
 			continue
 		case <-c.closeCh:
 		case <-c.ctx.Done():
 			_ = c.conn.Close()
-			// TODO: add debugging logs
-			fmt.Println("quit")
+			c.logger.Debugln("connection closed")
 			return
 		}
 	}
@@ -111,7 +143,12 @@ func (c *Client) receiveLoop() {
 
 		select {
 		case c.readCh <- obj:
-			// TODO: increase message received k6 counter
+			stats.PushIfNotDone(c.ctx, c.samplesOutput, stats.Sample{
+				Metric: metrics.WSMessagesReceived,
+				Time:   time.Now(),
+				Tags:   c.sampleTags,
+				Value:  1,
+			})
 			continue
 		}
 	}
@@ -124,7 +161,8 @@ func (c *Client) receiveWelcomeMsg() {
 	}
 
 	if obj.Type != "welcome" {
-		fmt.Printf("expected welcome msg, got %v", obj)
+		c.logger.Errorf("expected welcome msg, got %v", obj)
+
 		panic(err)
 	}
 }
@@ -135,13 +173,10 @@ func (c *Client) receiveIgnoringPing() (*cableMsg, error) {
 		if err := c.codec.Receive(c.conn, &msg); err != nil {
 			return nil, err
 		}
+		c.logger.Debugf("message received: `%#v`\n", msg)
 
-		if msg.Type == "ping" || msg.Type == "confirm_subscription" {
+		if msg.Type == "ping" {
 			continue
-		}
-
-		if msg.Type == "reject_subscription" {
-			return nil, errors.New("subscription rejected")
 		}
 
 		return &msg, nil

@@ -15,6 +15,7 @@ type Channel struct {
 	client     *Client
 	identifier string
 
+	confCh  chan bool
 	readCh chan *cableMsg
 }
 
@@ -48,7 +49,7 @@ func (ch *Channel) Receive(attr goja.Value) (interface{}, error) {
 // ReceiveN checks channels messages query for provided number of messages satisfying provided condition.
 func (ch *Channel) ReceiveN(n int, cond goja.Value) ([]interface{}, error) {
 	var results []interface{}
-	timer := time.After(300 * time.Millisecond) // TODO: configurable
+	timer := time.After(ch.client.recTimeout)
 
 	i := 0
 	for {
@@ -70,14 +71,14 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) ([]interface{}, error) {
 
 // matches used to check passed message against provided condition:
 // - when condition is nil, match is always successful
-// - when condition is func, result of func(msg) is used as a result of match
-// - when condition is object, match is successful when message includes all object attributes
+// - when condition is a func, result of func(msg) is used as a result of match
+// - when condition is a string, match is successful when message matches provided string
+// - when condition is an object, match is successful when message includes all object attributes
 func (ch *Channel) matches(msg interface{}, cond goja.Value) bool {
 	if cond == nil || goja.IsUndefined(cond) || goja.IsNull(cond) {
 		return true
 	}
 
-	// TODO: seems like it will never be used?
 	if _, ok := cond.(*goja.Symbol); ok {
 		if _, ok := msg.(string); !ok {
 			return false
