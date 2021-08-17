@@ -92,6 +92,10 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 	}
 }
 
+func (c *Client) Disconnect() {
+	c.conn.Close()
+}
+
 func (c *Client) send(msg *cableMsg) error {
 	err := c.codec.Send(c.conn, msg)
 	stats.PushIfNotDone(c.ctx, c.samplesOutput, stats.Sample{
@@ -156,6 +160,12 @@ func (c *Client) receiveLoop() {
 			case c.closeCh <- code:
 			}
 			continue
+		}
+
+		if obj.Type == "disconnect" {
+			c.logger.Debugln("connection closed by server")
+			c.Disconnect()
+			return
 		}
 
 		select {

@@ -36,7 +36,7 @@ Consider a simple example using the EchoChannel:
 
 ```js
 // benchmark.js
-import { check } from 'k6';
+import { check, sleep } from 'k6';
 import cable from "k6/x/cable";
 
 export default function () {
@@ -66,6 +66,11 @@ export default function () {
   check(reses, {
     "received 3 messages": (obj) => obj.length === 2,
   });
+
+  sleep(1);
+
+  // Terminate the WS connection
+  client.disconnect()
 }
 ```
 
