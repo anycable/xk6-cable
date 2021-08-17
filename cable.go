@@ -3,8 +3,10 @@ package cable
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -27,7 +29,7 @@ var errCableInInitContext = common.NewInitContextError("using cable in the init 
 type Cable struct{}
 
 // Connect connects to the websocket, creates and starts client, and returns it to the js.
-func (r *Cable) Connect(ctx context.Context, url string, opts goja.Value) *Client {
+func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) *Client {
 	state := lib.GetState(ctx)
 	if state == nil {
 		panic(errCableInInitContext)
@@ -40,7 +42,28 @@ func (r *Cable) Connect(ctx context.Context, url string, opts goja.Value) *Clien
 
 	wsd := createDialer(state, cOpts.handshakeTimeout())
 	connectionStart := time.Now()
-	conn, httpResponse, connErr := wsd.DialContext(ctx, url, cOpts.header())
+
+	headers := cOpts.header()
+
+	if headers.Get("ORIGIN") == "" {
+		uri, perr := url.Parse(cableUrl)
+
+		if perr == nil {
+			var scheme string
+
+			if uri.Scheme == "wss" {
+				scheme = "https"
+			} else {
+				scheme = "http"
+			}
+
+			origin := fmt.Sprintf("%s://%s", scheme, uri.Host)
+
+			headers.Set("ORIGIN", origin)
+		}
+	}
+
+	conn, httpResponse, connErr := wsd.DialContext(ctx, cableUrl, headers)
 	connectionEnd := time.Now()
 
 	tags := cOpts.appendTags(state.CloneTags())
@@ -59,7 +82,7 @@ func (r *Cable) Connect(ctx context.Context, url string, opts goja.Value) *Clien
 		}
 	}
 	if state.Options.SystemTags.Has(stats.TagURL) {
-		tags["url"] = url
+		tags["url"] = cableUrl
 	}
 
 	sampleTags := stats.IntoSampleTags(&tags)
