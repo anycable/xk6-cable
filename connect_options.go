@@ -12,13 +12,18 @@ import (
 )
 
 type connectOptions struct {
-	Headers map[string]string `json:"headers" :"headers"`
-	Tags    map[string]string `json:"tags" :"tags"`
-	Codec   string            `json:"codec" :"codec"`
+	Headers map[string]string `json:"headers"`
+	Tags    map[string]string `json:"tags"`
+	Codec   string            `json:"codec"`
 
 	HandshakeTimeoutS int `json:"handshakeTimeoutS"`
-	RecTimeoutMs      int `json:"recTimeoutMs"`
+	ReceiveTimeoutMs  int `json:"receiveTimeoutMs"`
 }
+
+const (
+	defaultHandshakeTimeout = 60
+	defaultReceiveTimeout   = 1000
+)
 
 func parseOptions(ctx context.Context, inOpts goja.Value) (*connectOptions, error) {
 	var outOpts connectOptions
@@ -53,18 +58,18 @@ func (co *connectOptions) codec() *Codec {
 
 func (co *connectOptions) handshakeTimeout() time.Duration {
 	if co.HandshakeTimeoutS == 0 {
-		return 60 * time.Second
+		return defaultHandshakeTimeout * time.Second
 	}
 
 	return time.Duration(co.HandshakeTimeoutS) * time.Second
 }
 
-func (co *connectOptions) recTimeout() time.Duration {
-	if co.RecTimeoutMs == 0 {
-		return 300 * time.Millisecond
+func (co *connectOptions) receiveTimeout() time.Duration {
+	if co.ReceiveTimeoutMs == 0 {
+		return defaultReceiveTimeout * time.Millisecond
 	}
 
-	return time.Duration(co.RecTimeoutMs) * time.Millisecond
+	return time.Duration(co.ReceiveTimeoutMs) * time.Millisecond
 }
 
 func (co *connectOptions) appendTags(tags map[string]string) map[string]string {

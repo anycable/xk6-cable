@@ -2,12 +2,15 @@ package cable
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
-	"go.k6.io/k6/lib/metrics"
 	"sync"
 	"time"
 
+	"go.k6.io/k6/js/common"
+	"go.k6.io/k6/lib/metrics"
+
+	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"go.k6.io/k6/stats"
@@ -35,16 +38,30 @@ type Client struct {
 	logger     *logrus.Entry
 	recTimeout time.Duration
 
-	sampleTags *stats.SampleTags
+	sampleTags    *stats.SampleTags
 	samplesOutput chan<- stats.SampleContainer
 }
 
 // Subscribe creates and returns Channel
-func (c *Client) Subscribe(channelName string) (*Channel, error) {
+func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	identifier := fmt.Sprintf("{\"channel\":\"%s\"}", channelName)
+	params, err := c.parseParams(paramsIn)
+
+	if err != nil {
+		panic(err)
+	}
+
+	params["channel"] = channelName
+
+	identifierJSON, err := json.Marshal(params)
+
+	if err != nil {
+		panic(err)
+	}
+
+	identifier := string(identifierJSON)
 
 	if c.channels[identifier] != nil {
 		c.logger.Errorf("already subscribed to `%v` channel\n", channelName)
@@ -181,4 +198,18 @@ func (c *Client) receiveIgnoringPing() (*cableMsg, error) {
 
 		return &msg, nil
 	}
+
+}
+
+func (c *Client) parseParams(in goja.Value) (map[string]interface{}, error) {
+	params := make(map[string]interface{})
+
+	if in == nil || goja.IsUndefined(in) || goja.IsNull(in) {
+		return params, nil
+	}
+
+	rt := common.GetRuntime(c.ctx)
+	data := in.ToObject(rt).Export().(map[string]interface{})
+
+	return data, nil
 }

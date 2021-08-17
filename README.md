@@ -2,30 +2,78 @@
 
 A k6 extension for testing Action Cable and AnyCable functionality. Built for [k6](https://go.k6.io/k6) using the [xk6](https://github.com/k6io/xk6) system.
 
+Comparing to the official [WebSockets support][k6-websockets], `xk6-cable` provides the following features:
+
+- Built-in Action Cable API support (no need to manually build or parse protocol messages).
+- Synchronous API to initialize connections and subscriptions.
+- (WIP) AnyCable-specific extensions (e.g., binary encodings)
+
 ## Build
 
 To build a `k6` binary with this extension, first ensure you have the prerequisites:
 
-- [Go toolchain](https://go101.org/article/go-toolchain.html)
+- [Go toolchain](https://go101.org/article/go-toolchain.html) v1.17+
 - Git
 
 1. Install `xk6` framework for extending `k6`:
-```shell
-go install github.com/k6io/xk6/cmd/xk6@latest
+
+```sh
+go install github.com/k6io/xk6/cmd/xk6
 ```
 
-2. Build the binary:
+1. Build the binary:
+
 ```shell
 xk6 build --with github.com/anycable/xk6-cable@latest
+
+# or if you want to build from the local source
+xk6 build --with github.com/anycable/xk6-cable@latest=/path/to/source
 ```
 
 ## Example
-```shell
-./k6 run example.js
+
+Consider a simple example using the EchoChannel:
+
+```js
+// benchmark.js
+import { check } from 'k6';
+import cable from "k6/x/cable";
+
+export default function () {
+  // Initialize the connection
+  const client = cable.connect("ws://localhost:8080/cable");
+  // At this point, the client has been successfully connected
+  // (e.g., welcome message has been received)
+
+  // Send subscription request and wait for the confirmation
+  const channel = client.subscribe("EchoChannel");
+
+  // Perform an action
+  channel.perform("echo", { foo: 1 });
+
+  // Retrieve a single message from the incoming inbox (FIFO)
+  // NOTE: Pings are ignored
+  const res = channel.receive();
+  check(res, {
+    "received res": (obj) => obj.foo === 1,
+  });
+
+  channel.perform("echo", { foobar: 3 });
+  channel.perform("echo", { foobaz: 3 });
+
+  // You can also retrieve multiple messages at a time
+  const reses = channel.receiveN(2);
+  check(reses, {
+    "received 3 messages": (obj) => obj.length === 2,
+  });
+}
 ```
 
-Result output:
-```shell
+Example run results:
+
+```sh
+$ ./k6 run benchmark.js
+
 
           /\      |‾‾| /‾‾/   /‾‾/
      /\  /  \     |  |/  /   /  /
@@ -34,7 +82,7 @@ Result output:
   / __________ \  |__| \__\ \_____/ .io
 
   execution: local
-     script: example.js
+     script: benchmark.js
      output: -
 
   scenarios: (100.00%) 1 scenario, 1 max VUs, 10m30s max duration (incl. graceful stop):
@@ -59,6 +107,17 @@ default ✓ [======================================] 1 VUs  00m00.0s/10m0s  1/1 
      ws_msgs_received.....: 9       754.653698/s
      ws_msgs_sent.........: 9       754.653698/s
      ws_sessions..........: 1       83.850411/s
+```
+
+You can pass the following options to the `connect` method as the second argument:
+
+```js
+{
+  headers: {}, // HTTP headers to use (e.g., { COOKIE: 'some=cookie;' })
+  tags: {}, // k6 tags
+  handshakeTimeoutS: 60, // Max allowed time to initialize a connection
+  receiveTimeoutMs: 300, // Max time to wait for an incoming message
+}
 ```
 
 ## Contributing

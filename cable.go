@@ -86,7 +86,7 @@ func (r *Cable) Connect(ctx context.Context, url string, opts goja.Value) *Clien
 		readCh:        make(chan *cableMsg),
 		errorCh:       make(chan error),
 		closeCh:       make(chan int),
-		recTimeout:    cOpts.recTimeout(),
+		recTimeout:    cOpts.receiveTimeout(),
 		sampleTags:    sampleTags,
 		samplesOutput: state.Samples,
 	}
