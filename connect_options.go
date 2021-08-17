@@ -12,6 +12,7 @@ import (
 )
 
 type connectOptions struct {
+	Cookies string            `json:"cookies"`
 	Headers map[string]string `json:"headers"`
 	Tags    map[string]string `json:"tags"`
 	Codec   string            `json:"codec"`
@@ -82,12 +83,17 @@ func (co *connectOptions) appendTags(tags map[string]string) map[string]string {
 }
 
 func (co *connectOptions) header() http.Header {
-	var header http.Header
+	header := http.Header{}
+
 	if len(co.Headers) > 0 {
-		header = http.Header{}
 		for k, v := range co.Headers {
 			header.Set(k, v)
 		}
 	}
+
+	if co.Cookies != "" {
+		header.Set("COOKIE", co.Cookies)
+	}
+
 	return header
 }
