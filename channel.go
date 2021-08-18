@@ -2,12 +2,12 @@ package cable
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/dop251/goja"
+	"github.com/sirupsen/logrus"
 	"go.k6.io/k6/js/common"
 )
 
@@ -15,7 +15,8 @@ type Channel struct {
 	client     *Client
 	identifier string
 
-	confCh  chan bool
+	logger *logrus.Entry
+	confCh chan bool
 	readCh chan *cableMsg
 }
 
@@ -37,17 +38,17 @@ func (ch *Channel) Perform(action string, attr goja.Value) error {
 }
 
 // Receive checks channels messages query for message, sugar for ReceiveN(1, attrs)
-func (ch *Channel) Receive(attr goja.Value) (interface{}, error) {
-	results, err := ch.ReceiveN(1, attr)
+func (ch *Channel) Receive(attr goja.Value) interface{} {
+	results := ch.ReceiveN(1, attr)
 	if len(results) == 0 {
-		return nil, err
+		return nil
 	}
 
-	return results[0], err
+	return results[0]
 }
 
 // ReceiveN checks channels messages query for provided number of messages satisfying provided condition.
-func (ch *Channel) ReceiveN(n int, cond goja.Value) ([]interface{}, error) {
+func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 	var results []interface{}
 	timer := time.After(ch.client.recTimeout)
 
@@ -61,10 +62,11 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) ([]interface{}, error) {
 			results = append(results, msg.Message)
 			i++
 			if i >= n {
-				return results, nil
+				return results
 			}
 		case <-timer:
-			return nil, errors.New("receiving timeout exceeded")
+			ch.logger.Error("receive timeout exceeded")
+			return results
 		}
 	}
 }

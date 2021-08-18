@@ -3,7 +3,6 @@ package cable
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"sync"
 	"time"
 
@@ -50,7 +49,7 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 	params, err := c.parseParams(paramsIn)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	params["channel"] = channelName
@@ -58,13 +57,13 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 	identifierJSON, err := json.Marshal(params)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	identifier := string(identifierJSON)
 
 	if c.channels[identifier] != nil {
-		c.logger.Errorf("already subscribed to `%v` channel\n", channelName)
+		c.logger.Warnf("already subscribed to `%v` channel\n", channelName)
 		return c.channels[identifier], nil
 	}
 
@@ -72,7 +71,13 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 		return nil, err
 	}
 
-	channel := &Channel{client: c, identifier: identifier, readCh: make(chan *cableMsg), confCh: make(chan bool)}
+	channel := &Channel{
+		client:     c,
+		identifier: identifier,
+		logger:     c.logger,
+		readCh:     make(chan *cableMsg),
+		confCh:     make(chan bool),
+	}
 	c.channels[identifier] = channel
 
 	timer := time.After(c.recTimeout)
@@ -84,10 +89,10 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 				return channel, nil
 			}
 			c.logger.Errorf("subscription to `%v`: rejected\n", channelName)
-			return nil, errors.New("subscription rejected")
+			return nil, nil
 		case <-timer:
 			c.logger.Errorf("subscription to `%v`: timeout exceeded\n", channelName)
-			return nil, errors.New("subscription timeout exceeded")
+			return nil, nil
 		}
 	}
 }
@@ -130,7 +135,6 @@ func (c *Client) handleLoop() {
 				}
 			}
 		case err := <-c.errorCh:
-			// TODO: pass errors to the js script?
 			c.logger.Errorf("websocket error: %v", err)
 			continue
 		case <-c.closeCh:

@@ -42,17 +42,29 @@ import cable from "k6/x/cable";
 export default function () {
   // Initialize the connection
   const client = cable.connect("ws://localhost:8080/cable");
+  // If connection were not sucessful, the return value is null
+  // It's a good practice to add a check and configure a threshold (so, you can fail-fast if
+  // configuration is incorrect)
+  if (
+    !check(client, {
+      "successful connection": (obj) => obj,
+    })
+  ) {
+    fail("connection failed");
+  }
+
   // At this point, the client has been successfully connected
   // (e.g., welcome message has been received)
 
-  // Send subscription request and wait for the confirmation
+  // Send subscription request and wait for the confirmation.
+  // Returns null if failed to subscribe (due to rejection or timeout).
   const channel = client.subscribe("EchoChannel");
 
   // Perform an action
   channel.perform("echo", { foo: 1 });
 
-  // Retrieve a single message from the incoming inbox (FIFO)
-  // NOTE: Pings are ignored
+  // Retrieve a single message from the incoming inbox (FIFO).
+  // Returns null if no messages have been received in the specified period of time (see below).
   const res = channel.receive();
   check(res, {
     "received res": (obj) => obj.foo === 1,
@@ -61,10 +73,12 @@ export default function () {
   channel.perform("echo", { foobar: 3 });
   channel.perform("echo", { foobaz: 3 });
 
-  // You can also retrieve multiple messages at a time
+  // You can also retrieve multiple messages at a time.
+  // Returns as many messages (but not more than expected) as have been received during
+  // the specified period of time. If none, returns an empty array.
   const reses = channel.receiveN(2);
   check(reses, {
-    "received 3 messages": (obj) => obj.length === 2,
+    "received 2 messages": (obj) => obj.length === 2,
   });
 
   sleep(1);

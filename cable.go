@@ -29,15 +29,15 @@ var errCableInInitContext = common.NewInitContextError("using cable in the init 
 type Cable struct{}
 
 // Connect connects to the websocket, creates and starts client, and returns it to the js.
-func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) *Client {
+func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) (*Client, error) {
 	state := lib.GetState(ctx)
 	if state == nil {
-		panic(errCableInInitContext)
+		return nil, errCableInInitContext
 	}
 
 	cOpts, err := parseOptions(ctx, opts)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	wsd := createDialer(state, cOpts.handshakeTimeout())
@@ -62,6 +62,8 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) *
 			headers.Set("ORIGIN", origin)
 		}
 	}
+
+	logger := state.Logger.WithField("source", "cable")
 
 	conn, httpResponse, connErr := wsd.DialContext(ctx, cableUrl, headers)
 	connectionEnd := time.Now()
@@ -97,14 +99,15 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) *
 	})
 
 	if connErr != nil {
-		panic(connErr)
+		logger.Errorf("failed to connect: %v", connErr)
+		return nil, nil
 	}
 
 	client := Client{
 		ctx:           ctx,
 		conn:          conn,
 		codec:         cOpts.codec(),
-		logger:        state.Logger.WithField("source", "cable"),
+		logger:        logger,
 		channels:      make(map[string]*Channel),
 		readCh:        make(chan *cableMsg),
 		errorCh:       make(chan error),
@@ -116,7 +119,7 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) *
 
 	client.start()
 
-	return &client
+	return &client, nil
 }
 
 func createDialer(state *lib.State, handshakeTimeout time.Duration) websocket.Dialer {
