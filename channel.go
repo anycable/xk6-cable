@@ -50,12 +50,14 @@ func (ch *Channel) Receive(attr goja.Value) interface{} {
 // ReceiveN checks channels messages query for provided number of messages satisfying provided condition.
 func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 	var results []interface{}
-	timer := time.After(ch.client.recTimeout)
+	timeout := ch.client.recTimeout
+	timer := time.NewTimer(ch.client.recTimeout)
 
 	i := 0
 	for {
 		select {
 		case msg := <-ch.readCh:
+			timer.Reset(timeout)
 			if !ch.matches(msg.Message, cond) {
 				continue
 			}
@@ -64,7 +66,7 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 			if i >= n {
 				return results
 			}
-		case <-timer:
+		case <-timer.C:
 			ch.logger.Error("receive timeout exceeded")
 			return results
 		}
