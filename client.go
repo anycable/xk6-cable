@@ -153,7 +153,7 @@ func (c *Client) receiveLoop() {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 				select {
 				case c.errorCh <- err:
-					continue
+					return
 				}
 			}
 			code := websocket.CloseGoingAway
@@ -163,7 +163,7 @@ func (c *Client) receiveLoop() {
 			select {
 			case c.closeCh <- code:
 			}
-			continue
+			return
 		}
 
 		if obj.Type == "disconnect" {
