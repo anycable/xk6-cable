@@ -91,7 +91,7 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 			c.logger.Errorf("subscription to `%v`: rejected\n", channelName)
 			return nil, nil
 		case <-timer:
-			c.logger.Errorf("subscription to `%v`: timeout exceeded\n", channelName)
+			c.logger.Errorf("subscription to `%v`: timeout exceeded. Consider increasing receiveTimeoutMs configuration option\n", channelName)
 			return nil, nil
 		}
 	}

@@ -136,7 +136,7 @@ You can pass the following options to the `connect` method as the second argumen
   cookies: "", // HTTP cookies as string (overwrite the value passed in headers if present)
   tags: {}, // k6 tags
   handshakeTimeoutS: 60, // Max allowed time to initialize a connection
-  receiveTimeoutMs: 300, // Max time to wait for an incoming message
+  receiveTimeoutMs: 1000, // Max time to wait for an incoming message
 }
 ```
 
