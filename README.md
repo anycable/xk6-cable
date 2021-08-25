@@ -1,6 +1,6 @@
 # xk6-cable
 
-A k6 extension for testing Action Cable and AnyCable functionality. Built for [k6](https://go.k6.io/k6) using the [xk6](https://github.com/k6io/xk6) system.
+A k6 extension for testing Action Cable and AnyCable functionality. Built for [k6][] using the [xk6][] system.
 
 Comparing to the official [WebSockets support][k6-websockets], `xk6-cable` provides the following features:
 
@@ -147,3 +147,7 @@ Bug reports and pull requests are welcome on GitHub at [https://github.com/anyca
 ## License
 
 The gem is available as open source under the terms of the [MIT License](./LICENSE).
+
+[k6]: https://k6.io
+[xk6]: https://github.com/grafana/xk6
+[k6-websockets]: https://k6.io/docs/using-k6/protocols/websockets/
