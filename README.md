@@ -140,6 +140,8 @@ You can pass the following options to the `connect` method as the second argumen
 }
 ```
 
+More examples could be found in the [examples/](./examples) folder.
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at [https://github.com/anycable/xk6-cable](https://github.com/anycable/xk6-cable).
