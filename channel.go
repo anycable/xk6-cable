@@ -18,6 +18,8 @@ type Channel struct {
 	logger *logrus.Entry
 	confCh chan bool
 	readCh chan *cableMsg
+
+	ignoreReads bool
 }
 
 // Perform sends passed action with additional data to the channel
@@ -35,6 +37,11 @@ func (ch *Channel) Perform(action string, attr goja.Value) error {
 		Identifier: ch.identifier,
 		Data:       string(data),
 	})
+}
+
+// IgnoreReads allows skipping collecting incoming messages (in case you only care about the subscription)
+func (ch *Channel) IgnoreReads() {
+	ch.ignoreReads = true
 }
 
 // Receive checks channels messages query for message, sugar for ReceiveN(1, attrs)
@@ -76,6 +83,14 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 			return results
 		}
 	}
+}
+
+func (ch *Channel) handleIncoming(msg *cableMsg) {
+	if ch.ignoreReads {
+		return
+	}
+
+	ch.readCh <- msg
 }
 
 type Matcher interface {

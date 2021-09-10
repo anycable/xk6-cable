@@ -131,7 +131,7 @@ func (c *Client) handleLoop() {
 				case "reject_subscription":
 					c.channels[msg.Identifier].confCh <- false
 				default:
-					c.channels[msg.Identifier].readCh <- msg
+					c.channels[msg.Identifier].handleIncoming(msg)
 				}
 			}
 		case err := <-c.errorCh:
