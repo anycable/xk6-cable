@@ -75,8 +75,8 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 		client:     c,
 		identifier: identifier,
 		logger:     c.logger,
-		readCh:     make(chan *cableMsg),
-		confCh:     make(chan bool),
+		readCh:     make(chan *cableMsg, 2048),
+		confCh:     make(chan bool, 1),
 	}
 	c.channels[identifier] = channel
 
