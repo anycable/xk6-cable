@@ -17,8 +17,9 @@ type connectOptions struct {
 	Tags    map[string]string `json:"tags"`
 	Codec   string            `json:"codec"`
 
-	HandshakeTimeoutS int `json:"handshakeTimeoutS"`
-	ReceiveTimeoutMs  int `json:"receiveTimeoutMs"`
+	HandshakeTimeoutS int    `json:"handshakeTimeoutS"`
+	ReceiveTimeoutMs  int    `json:"receiveTimeoutMs"`
+	LogLevel          string `json:"logLevel"`
 }
 
 const (

@@ -12,6 +12,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
@@ -62,6 +63,14 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) (
 			headers.Set("ORIGIN", origin)
 		}
 	}
+
+	level, err := logrus.ParseLevel(cOpts.LogLevel)
+
+	if err != nil {
+		panic(err)
+	}
+
+	state.Logger.SetLevel(level)
 
 	logger := state.Logger.WithField("source", "cable")
 

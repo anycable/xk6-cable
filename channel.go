@@ -79,7 +79,7 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 				return results
 			}
 		case <-timer.C:
-			ch.logger.Error("receive timeout exceeded; consider increasing receiveTimeoutMs configuration option")
+			ch.logger.Warn("receive timeout exceeded; consider increasing receiveTimeoutMs configuration option")
 			return results
 		}
 	}
