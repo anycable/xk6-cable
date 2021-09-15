@@ -64,13 +64,17 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) (
 		}
 	}
 
-	level, err := logrus.ParseLevel(cOpts.LogLevel)
-
-	if err != nil {
-		panic(err)
+	if cOpts.codec() == JSONCodec {
+		headers.Set("Sec-WebSocket-Protocol", "actioncable-v1-json")
+	} else if cOpts.codec() == MsgPackCodec {
+		headers.Set("Sec-WebSocket-Protocol", "actioncable-v1-msgpack")
 	}
 
-	state.Logger.SetLevel(level)
+	level, err := logrus.ParseLevel(cOpts.LogLevel)
+
+	if err == nil {
+		state.Logger.SetLevel(level)
+	}
 
 	logger := state.Logger.WithField("source", "cable")
 
