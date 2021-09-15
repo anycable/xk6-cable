@@ -53,6 +53,8 @@ func parseOptions(ctx context.Context, inOpts goja.Value) (*connectOptions, erro
 func (co *connectOptions) codec() *Codec {
 	if co.Codec == "msgpack" {
 		return MsgPackCodec
+	} else if co.Codec == "protobuf" {
+		return ProtobufCodec
 	}
 
 	return JSONCodec

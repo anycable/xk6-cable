@@ -68,6 +68,8 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) (
 		headers.Set("Sec-WebSocket-Protocol", "actioncable-v1-json")
 	} else if cOpts.codec() == MsgPackCodec {
 		headers.Set("Sec-WebSocket-Protocol", "actioncable-v1-msgpack")
+	} else if cOpts.codec() == ProtobufCodec {
+		headers.Set("Sec-WebSocket-Protocol", "actioncable-v1-protobuf")
 	}
 
 	level, err := logrus.ParseLevel(cOpts.LogLevel)

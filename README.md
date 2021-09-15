@@ -138,9 +138,11 @@ You can pass the following options to the `connect` method as the second argumen
   handshakeTimeoutS: 60, // Max allowed time to initialize a connection
   receiveTimeoutMs: 1000, // Max time to wait for an incoming message
   logLevel: "info" // logging level (change to debug to see more information)
-  codec: "json", // Codec (encoder) to use. Supported values are: json, msgpack.
+  codec: "json", // Codec (encoder) to use. Supported values are: json, msgpack, protobuf.
 }
 ```
+
+**NOTE:** `msgpack` and `protobuf` codecs are only supported by [AnyCable PRO](https://anycable.io#pro).
 
 More examples could be found in the [examples/](./examples) folder.
 
