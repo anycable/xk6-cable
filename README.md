@@ -8,6 +8,8 @@ Comparing to the official [WebSockets support][k6-websockets], `xk6-cable` provi
 - Synchronous API to initialize connections and subscriptions.
 - (WIP) AnyCable-specific extensions (e.g., binary encodings)
 
+> Read also ["Real-time stress: AnyCable, k6, WebSockets, and Yabeda"](https://evilmartians.com/chronicles/real-time-stress-anycable-k6-websockets-and-yabeda?utm_source=xk6-cable-github)
+
 ## Build
 
 To build a `k6` binary with this extension, first ensure you have the prerequisites:
