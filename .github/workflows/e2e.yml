@@ -1,0 +1,50 @@
+name: E2E
+on:
+  schedule:
+  - cron:  '42 7 * * *'
+  push:
+    branches:
+      - master
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        go: [stable, tip]
+        platform: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.x
+      - name: Install Go tip
+        if: matrix.go == 'tip'
+        run: |
+          go install golang.org/dl/gotip@latest
+          gotip download
+          echo "GOROOT=$HOME/sdk/gotip" >> "$GITHUB_ENV"
+          echo "GOPATH=$HOME/go" >> "$GITHUB_ENV"
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          echo "$HOME/sdk/gotip/bin" >> "$GITHUB_PATH"
+      - name: Install xk6
+        run: go install go.k6.io/xk6/cmd/xk6@master
+      - name: Build extension
+        run: |
+          which go
+          go version
+
+          GOPRIVATE="go.k6.io/k6" xk6 build latest \
+            --output ./k6ext \
+            --with github.com/grafana/xk6-browser=.
+          ./k6ext version
+
+      - name: Run E2E test
+        run: ./k6ext run -e CABLE_URL="wss://ws.demo.anycable.io/cable" -e MESSAGES_NUM=1 -e MAX=1 -e TIME=1 examples/chat.js
