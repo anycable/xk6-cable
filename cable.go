@@ -16,7 +16,6 @@ import (
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/stats"
 )
 
@@ -106,8 +105,8 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) (
 
 	stats.PushIfNotDone(ctx, state.Samples, stats.ConnectedSamples{
 		Samples: []stats.Sample{
-			{Metric: metrics.WSSessions, Time: connectionStart, Tags: sampleTags, Value: 1},
-			{Metric: metrics.WSConnecting, Time: connectionStart, Tags: sampleTags, Value: stats.D(connectionEnd.Sub(connectionStart))},
+			{Metric: state.BuiltinMetrics.WSSessions, Time: connectionStart, Tags: sampleTags, Value: 1},
+			{Metric: state.BuiltinMetrics.WSConnecting, Time: connectionStart, Tags: sampleTags, Value: stats.D(connectionEnd.Sub(connectionStart))},
 		},
 		Tags: sampleTags,
 		Time: connectionStart,
