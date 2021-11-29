@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"go.k6.io/k6/js/common"
-	"go.k6.io/k6/lib/metrics"
+	"go.k6.io/k6/lib"
+	"go.k6.io/k6/stats"
 
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
-	"go.k6.io/k6/stats"
 )
 
 type cableMsg struct {
@@ -102,9 +102,14 @@ func (c *Client) Disconnect() {
 }
 
 func (c *Client) send(msg *cableMsg) error {
+	state := lib.GetState(c.ctx)
+	if state == nil {
+		return errCableInInitContext
+	}
+
 	err := c.codec.Send(c.conn, msg)
 	stats.PushIfNotDone(c.ctx, c.samplesOutput, stats.Sample{
-		Metric: metrics.WSMessagesSent,
+		Metric: state.BuiltinMetrics.WSMessagesSent,
 		Time:   time.Now(),
 		Tags:   c.sampleTags,
 		Value:  1,
@@ -174,8 +179,12 @@ func (c *Client) receiveLoop() {
 
 		select {
 		case c.readCh <- obj:
+			state := lib.GetState(c.ctx)
+			if state == nil {
+				continue
+			}
 			stats.PushIfNotDone(c.ctx, c.samplesOutput, stats.Sample{
-				Metric: metrics.WSMessagesReceived,
+				Metric: state.BuiltinMetrics.WSMessagesReceived,
 				Time:   time.Now(),
 				Tags:   c.sampleTags,
 				Value:  1,
