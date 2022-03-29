@@ -20,6 +20,7 @@ type Channel struct {
 	readCh chan *cableMsg
 
 	ignoreReads bool
+	asyncMatcher *FuncMatcher
 }
 
 // Perform sends passed action with additional data to the channel
@@ -37,6 +38,13 @@ func (ch *Channel) Perform(action string, attr goja.Value) error {
 		Identifier: ch.identifier,
 		Data:       string(data),
 	})
+}
+
+func (ch *Channel) OnMessage(cond goja.Value) {
+	fn, ok := goja.AssertFunction(cond)
+	if ok {
+		ch.asyncMatcher = &FuncMatcher{common.GetRuntime(ch.client.ctx), fn}
+	}
 }
 
 // IgnoreReads allows skipping collecting incoming messages (in case you only care about the subscription)
@@ -70,6 +78,10 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 		select {
 		case msg := <-ch.readCh:
 			timer.Reset(timeout)
+			if ch.asyncMatcher != nil {
+				ch.asyncMatcher.Match(msg.Message)
+			}
+
 			if !matcher.Match(msg.Message) {
 				continue
 			}
