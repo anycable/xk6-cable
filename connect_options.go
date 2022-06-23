@@ -2,13 +2,11 @@ package cable
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/dop251/goja"
-	"go.k6.io/k6/js/common"
 )
 
 type connectOptions struct {
@@ -27,14 +25,13 @@ const (
 	defaultReceiveTimeout   = 1000
 )
 
-func parseOptions(ctx context.Context, inOpts goja.Value) (*connectOptions, error) {
+func parseOptions(rt *goja.Runtime, inOpts goja.Value) (*connectOptions, error) {
 	var outOpts connectOptions
 
 	if inOpts == nil || goja.IsUndefined(inOpts) || goja.IsNull(inOpts) {
 		return &outOpts, nil
 	}
 
-	rt := common.GetRuntime(ctx)
 	data, err := json.Marshal(inOpts.ToObject(rt).Export())
 	if err != nil {
 		return nil, err

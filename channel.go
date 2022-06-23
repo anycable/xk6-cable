@@ -8,7 +8,6 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/sirupsen/logrus"
-	"go.k6.io/k6/js/common"
 )
 
 type Channel struct {
@@ -24,7 +23,7 @@ type Channel struct {
 
 // Perform sends passed action with additional data to the channel
 func (ch *Channel) Perform(action string, attr goja.Value) error {
-	rt := common.GetRuntime(ch.client.ctx)
+	rt := ch.client.vu.Runtime()
 	obj := attr.ToObject(rt).Export().(map[string]interface{})
 	obj["action"] = action
 	data, err := json.Marshal(obj)
@@ -147,7 +146,7 @@ func (m *AttrMatcher) Match(msg interface{}) bool {
 
 type PassthruMatcher struct{}
 
-func (PassthruMatcher) Match(msg interface{}) bool {
+func (PassthruMatcher) Match(_ interface{}) bool {
 	return true
 }
 
@@ -168,11 +167,11 @@ func (ch *Channel) buildMatcher(cond goja.Value) (Matcher, error) {
 	userFunc, isFunc := goja.AssertFunction(cond)
 
 	if isFunc {
-		return &FuncMatcher{common.GetRuntime(ch.client.ctx), userFunc}, nil
+		return &FuncMatcher{ch.client.vu.Runtime(), userFunc}, nil
 	}
 
 	// we need to pass object through json unmarshalling to use same types for numbers
-	jsonAttr, err := cond.ToObject(common.GetRuntime(ch.client.ctx)).MarshalJSON()
+	jsonAttr, err := cond.ToObject(ch.client.vu.Runtime()).MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
