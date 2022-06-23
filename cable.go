@@ -1,7 +1,6 @@
 package cable
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -14,28 +13,21 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"go.k6.io/k6/js/common"
-	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/stats"
 )
 
-func init() {
-	modules.Register("k6/x/cable", new(Cable))
-}
-
 // errCableInInitContext is returned when cable used in the init context
 var errCableInInitContext = common.NewInitContextError("using cable in the init context is not supported")
 
-type Cable struct{}
-
 // Connect connects to the websocket, creates and starts client, and returns it to the js.
-func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) (*Client, error) {
-	state := lib.GetState(ctx)
+func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
+	state := c.vu.State()
 	if state == nil {
 		return nil, errCableInInitContext
 	}
 
-	cOpts, err := parseOptions(ctx, opts)
+	cOpts, err := parseOptions(c.vu.Runtime(), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +71,7 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) (
 
 	logger := state.Logger.WithField("source", "cable")
 
-	conn, httpResponse, connErr := wsd.DialContext(ctx, cableUrl, headers)
+	conn, httpResponse, connErr := wsd.DialContext(c.vu.Context(), cableUrl, headers)
 	connectionEnd := time.Now()
 
 	tags := cOpts.appendTags(state.CloneTags())
@@ -103,7 +95,7 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) (
 
 	sampleTags := stats.IntoSampleTags(&tags)
 
-	stats.PushIfNotDone(ctx, state.Samples, stats.ConnectedSamples{
+	stats.PushIfNotDone(c.vu.Context(), state.Samples, stats.ConnectedSamples{
 		Samples: []stats.Sample{
 			{Metric: state.BuiltinMetrics.WSSessions, Time: connectionStart, Tags: sampleTags, Value: 1},
 			{Metric: state.BuiltinMetrics.WSConnecting, Time: connectionStart, Tags: sampleTags, Value: stats.D(connectionEnd.Sub(connectionStart))},
@@ -118,7 +110,7 @@ func (r *Cable) Connect(ctx context.Context, cableUrl string, opts goja.Value) (
 	}
 
 	client := Client{
-		ctx:           ctx,
+		vu:            c.vu,
 		conn:          conn,
 		codec:         cOpts.codec(),
 		logger:        logger,

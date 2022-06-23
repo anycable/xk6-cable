@@ -1,13 +1,11 @@
 package cable
 
 import (
-	"context"
 	"encoding/json"
+	"go.k6.io/k6/js/modules"
 	"sync"
 	"time"
 
-	"go.k6.io/k6/js/common"
-	"go.k6.io/k6/lib"
 	"go.k6.io/k6/stats"
 
 	"github.com/dop251/goja"
@@ -24,7 +22,7 @@ type cableMsg struct {
 }
 
 type Client struct {
-	ctx      context.Context
+	vu       modules.VU
 	codec    *Codec
 	conn     *websocket.Conn
 	channels map[string]*Channel
@@ -98,17 +96,17 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 }
 
 func (c *Client) Disconnect() {
-	c.conn.Close()
+	_ = c.conn.Close()
 }
 
 func (c *Client) send(msg *cableMsg) error {
-	state := lib.GetState(c.ctx)
+	state := c.vu.State()
 	if state == nil {
 		return errCableInInitContext
 	}
 
 	err := c.codec.Send(c.conn, msg)
-	stats.PushIfNotDone(c.ctx, c.samplesOutput, stats.Sample{
+	stats.PushIfNotDone(c.vu.Context(), c.samplesOutput, stats.Sample{
 		Metric: state.BuiltinMetrics.WSMessagesSent,
 		Time:   time.Now(),
 		Tags:   c.sampleTags,
@@ -143,7 +141,7 @@ func (c *Client) handleLoop() {
 			c.logger.Errorf("websocket error: %v", err)
 			continue
 		case <-c.closeCh:
-		case <-c.ctx.Done():
+		case <-c.vu.Context().Done():
 			_ = c.conn.Close()
 			c.logger.Debugln("connection closed")
 			return
@@ -179,11 +177,11 @@ func (c *Client) receiveLoop() {
 
 		select {
 		case c.readCh <- obj:
-			state := lib.GetState(c.ctx)
+			state := c.vu.State()
 			if state == nil {
 				continue
 			}
-			stats.PushIfNotDone(c.ctx, c.samplesOutput, stats.Sample{
+			stats.PushIfNotDone(c.vu.Context(), c.samplesOutput, stats.Sample{
 				Metric: state.BuiltinMetrics.WSMessagesReceived,
 				Time:   time.Now(),
 				Tags:   c.sampleTags,
@@ -231,7 +229,7 @@ func (c *Client) parseParams(in goja.Value) (map[string]interface{}, error) {
 		return params, nil
 	}
 
-	rt := common.GetRuntime(c.ctx)
+	rt := c.vu.Runtime()
 	data := in.ToObject(rt).Export().(map[string]interface{})
 
 	return data, nil
