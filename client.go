@@ -2,11 +2,11 @@ package cable
 
 import (
 	"encoding/json"
-	"go.k6.io/k6/js/modules"
 	"sync"
 	"time"
 
-	"go.k6.io/k6/stats"
+	"go.k6.io/k6/js/modules"
+	"go.k6.io/k6/metrics"
 
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
@@ -35,8 +35,8 @@ type Client struct {
 	logger     *logrus.Entry
 	recTimeout time.Duration
 
-	sampleTags    *stats.SampleTags
-	samplesOutput chan<- stats.SampleContainer
+	sampleTags    *metrics.SampleTags
+	samplesOutput chan<- metrics.SampleContainer
 }
 
 // Subscribe creates and returns Channel
@@ -106,7 +106,7 @@ func (c *Client) send(msg *cableMsg) error {
 	}
 
 	err := c.codec.Send(c.conn, msg)
-	stats.PushIfNotDone(c.vu.Context(), c.samplesOutput, stats.Sample{
+	metrics.PushIfNotDone(c.vu.Context(), c.samplesOutput, metrics.Sample{
 		Metric: state.BuiltinMetrics.WSMessagesSent,
 		Time:   time.Now(),
 		Tags:   c.sampleTags,
@@ -181,7 +181,7 @@ func (c *Client) receiveLoop() {
 			if state == nil {
 				continue
 			}
-			stats.PushIfNotDone(c.vu.Context(), c.samplesOutput, stats.Sample{
+			metrics.PushIfNotDone(c.vu.Context(), c.samplesOutput, metrics.Sample{
 				Metric: state.BuiltinMetrics.WSMessagesReceived,
 				Time:   time.Now(),
 				Tags:   c.sampleTags,

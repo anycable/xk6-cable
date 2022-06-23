@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/vmihailenco/msgpack/v5 v5.3.5
-	go.k6.io/k6 v0.37.0
+	go.k6.io/k6 v0.38.3
 )
 
 require (
