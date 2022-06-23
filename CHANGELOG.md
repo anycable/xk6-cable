@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+## [0.3.0] - 2022-06-23
+
+### Changed
+- Update k6 dependency to latest v0.38.3 release. ([@skryukov])
+
 ## [0.2.0] - 2021-11-29
 
 ### Changed
@@ -38,7 +43,8 @@ and this project adheres to [Semantic Versioning].
 [@skryukov]: https://github.com/skryukov
 [@palkan]: https://github.com/palkan
 
-[Unreleased]: https://github.com/anycable/xk6-cable/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/anycable/xk6-cable/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/anycable/xk6-cable/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/anycable/xk6-cable/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/anycable/xk6-cable/compare/v0.0.3...v0.1.0
 [0.0.3]: https://github.com/anycable/xk6-cable/compare/v0.0.2...v0.0.3
