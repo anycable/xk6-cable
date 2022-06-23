@@ -9,12 +9,13 @@ import (
 	"strconv"
 	"time"
 
+	"go.k6.io/k6/js/common"
+	"go.k6.io/k6/lib"
+	"go.k6.io/k6/metrics"
+
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
-	"go.k6.io/k6/js/common"
-	"go.k6.io/k6/lib"
-	"go.k6.io/k6/stats"
 )
 
 // errCableInInitContext is returned when cable used in the init context
@@ -75,30 +76,30 @@ func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
 	connectionEnd := time.Now()
 
 	tags := cOpts.appendTags(state.CloneTags())
-	if state.Options.SystemTags.Has(stats.TagIP) && conn != nil && conn.RemoteAddr() != nil {
+	if state.Options.SystemTags.Has(metrics.TagIP) && conn != nil && conn.RemoteAddr() != nil {
 		if ip, _, err := net.SplitHostPort(conn.RemoteAddr().String()); err == nil {
 			tags["ip"] = ip
 		}
 	}
 	if httpResponse != nil {
-		if state.Options.SystemTags.Has(stats.TagStatus) {
+		if state.Options.SystemTags.Has(metrics.TagStatus) {
 			tags["status"] = strconv.Itoa(httpResponse.StatusCode)
 		}
 
-		if state.Options.SystemTags.Has(stats.TagSubproto) {
+		if state.Options.SystemTags.Has(metrics.TagSubproto) {
 			tags["subproto"] = httpResponse.Header.Get("Sec-WebSocket-Protocol")
 		}
 	}
-	if state.Options.SystemTags.Has(stats.TagURL) {
+	if state.Options.SystemTags.Has(metrics.TagURL) {
 		tags["url"] = cableUrl
 	}
 
-	sampleTags := stats.IntoSampleTags(&tags)
+	sampleTags := metrics.IntoSampleTags(&tags)
 
-	stats.PushIfNotDone(c.vu.Context(), state.Samples, stats.ConnectedSamples{
-		Samples: []stats.Sample{
+	metrics.PushIfNotDone(c.vu.Context(), state.Samples, metrics.ConnectedSamples{
+		Samples: []metrics.Sample{
 			{Metric: state.BuiltinMetrics.WSSessions, Time: connectionStart, Tags: sampleTags, Value: 1},
-			{Metric: state.BuiltinMetrics.WSConnecting, Time: connectionStart, Tags: sampleTags, Value: stats.D(connectionEnd.Sub(connectionStart))},
+			{Metric: state.BuiltinMetrics.WSConnecting, Time: connectionStart, Tags: sampleTags, Value: metrics.D(connectionEnd.Sub(connectionStart))},
 		},
 		Tags: sampleTags,
 		Time: connectionStart,
