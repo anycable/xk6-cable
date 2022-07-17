@@ -30,7 +30,6 @@ xk6 build --with github.com/anycable/xk6-cable@latest
 
 # you can specify k6 version
 xk6 build v0.38.3 --with github.com/anycable/xk6-cable@latest
-```
 
 # or if you want to build from the local source
 xk6 build --with github.com/anycable/xk6-cable@latest=/path/to/source
