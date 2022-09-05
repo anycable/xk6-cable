@@ -20,10 +20,10 @@ To build a `k6` binary with this extension, first ensure you have the prerequisi
 1. Install `xk6` framework for extending `k6`:
 
 ```sh
-go install github.com/k6io/xk6/cmd/xk6
+go install go.k6.io/xk6/cmd/xk6@latest
 ```
 
-1. Build the binary:
+2. Build the binary:
 
 ```shell
 xk6 build --with github.com/anycable/xk6-cable@latest
