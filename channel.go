@@ -3,22 +3,21 @@ package cable
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
-	"time"
-
 	"github.com/dop251/goja"
 	"github.com/sirupsen/logrus"
+	"reflect"
+	"time"
 )
 
 type Channel struct {
 	client     *Client
 	identifier string
 
-	logger *logrus.Entry
-	confCh chan bool
-	readCh chan *cableMsg
-
-	ignoreReads bool
+	logger       *logrus.Entry
+	confCh       chan bool
+	readCh       chan *cableMsg
+	asyncMatcher *FuncMatcher
+	ignoreReads  bool
 }
 
 // Perform sends passed action with additional data to the channel
@@ -36,6 +35,13 @@ func (ch *Channel) Perform(action string, attr goja.Value) error {
 		Identifier: ch.identifier,
 		Data:       string(data),
 	})
+}
+
+func (ch *Channel) OnMessage(callback goja.Value) {
+	fn, ok := goja.AssertFunction(callback)
+	if ok {
+		ch.asyncMatcher = &FuncMatcher{rt: ch.client.vu.Runtime(), f: fn}
+	}
 }
 
 // IgnoreReads allows skipping collecting incoming messages (in case you only care about the subscription)
@@ -69,6 +75,9 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 		select {
 		case msg := <-ch.readCh:
 			timer.Reset(timeout)
+			if ch.asyncMatcher != nil {
+				ch.asyncMatcher.Match(msg.Message)
+			}
 			if !matcher.Match(msg.Message) {
 				continue
 			}

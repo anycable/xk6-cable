@@ -65,6 +65,11 @@ export default function () {
   // Returns null if failed to subscribe (due to rejection or timeout).
   const channel = client.subscribe("EchoChannel");
 
+  channel.onMessage(msg => {
+    check(msg, {
+      "received command": obj => obj.speak === "hello",
+    });
+  });
   // Perform an action
   channel.perform("echo", { foo: 1 });
 
@@ -77,7 +82,11 @@ export default function () {
 
   channel.perform("echo", { foobar: 3 });
   channel.perform("echo", { foobaz: 3 });
-
+  channel.onMessage(msg => {
+    check(msg, {
+      "received phrase": obj => obj.test === 1,
+    });
+  });
   // You can also retrieve multiple messages at a time.
   // Returns as many messages (but not more than expected) as have been received during
   // the specified period of time. If none, returns an empty array.
@@ -156,7 +165,6 @@ More examples could be found in the [examples/](./examples) folder.
 Bug reports and pull requests are welcome on GitHub at [https://github.com/anycable/xk6-cable](https://github.com/anycable/xk6-cable).
 
 ## License
-
 The gem is available as open source under the terms of the [MIT License](./LICENSE).
 
 [k6]: https://k6.io
