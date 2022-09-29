@@ -18,6 +18,8 @@ type Channel struct {
 	confCh chan bool
 	readCh chan *cableMsg
 
+	asyncHandlers []goja.Callable
+
 	ignoreReads bool
 }
 
@@ -84,12 +86,35 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 	}
 }
 
+// Register callback to receive messages asynchronously
+func (ch *Channel) OnMessage(fn goja.Value) {
+	f, isFunc := goja.AssertFunction(fn)
+
+	if !isFunc {
+		panic("argument must be a function")
+	}
+
+	ch.asyncHandlers = append(ch.asyncHandlers, f)
+}
+
 func (ch *Channel) handleIncoming(msg *cableMsg) {
 	if ch.ignoreReads {
 		return
 	}
 
 	ch.readCh <- msg
+
+	ch.handleAsync(msg)
+}
+
+func (ch *Channel) handleAsync(msg *cableMsg) {
+	for _, h := range ch.asyncHandlers {
+		_, err := h(goja.Undefined(), ch.client.vu.Runtime().ToValue(msg))
+
+		if err != nil {
+			panic(fmt.Sprintf("can't call provided function: %v\n", err))
+		}
+	}
 }
 
 type Matcher interface {
