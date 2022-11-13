@@ -75,33 +75,44 @@ func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
 	conn, httpResponse, connErr := wsd.DialContext(c.vu.Context(), cableUrl, headers)
 	connectionEnd := time.Now()
 
-	tags := cOpts.appendTags(state.CloneTags())
+	tagsAndMeta := state.Tags.GetCurrentValues()
+
 	if state.Options.SystemTags.Has(metrics.TagIP) && conn != nil && conn.RemoteAddr() != nil {
 		if ip, _, err := net.SplitHostPort(conn.RemoteAddr().String()); err == nil {
-			tags["ip"] = ip
+			tagsAndMeta.SetSystemTagOrMeta(metrics.TagIP, ip)
 		}
 	}
 	if httpResponse != nil {
 		if state.Options.SystemTags.Has(metrics.TagStatus) {
-			tags["status"] = strconv.Itoa(httpResponse.StatusCode)
+			tagsAndMeta.SetSystemTagOrMeta(metrics.TagStatus, strconv.Itoa(httpResponse.StatusCode))
 		}
 
 		if state.Options.SystemTags.Has(metrics.TagSubproto) {
-			tags["subproto"] = httpResponse.Header.Get("Sec-WebSocket-Protocol")
+			tagsAndMeta.SetSystemTagOrMeta(metrics.TagSubproto, httpResponse.Header.Get("Sec-WebSocket-Protocol"))
 		}
 	}
 	if state.Options.SystemTags.Has(metrics.TagURL) {
-		tags["url"] = cableUrl
+		tagsAndMeta.SetSystemTagOrMetaIfEnabled(state.Options.SystemTags, metrics.TagURL, cableUrl)
 	}
-
-	sampleTags := metrics.IntoSampleTags(&tags)
 
 	metrics.PushIfNotDone(c.vu.Context(), state.Samples, metrics.ConnectedSamples{
 		Samples: []metrics.Sample{
-			{Metric: state.BuiltinMetrics.WSSessions, Time: connectionStart, Tags: sampleTags, Value: 1},
-			{Metric: state.BuiltinMetrics.WSConnecting, Time: connectionStart, Tags: sampleTags, Value: metrics.D(connectionEnd.Sub(connectionStart))},
+			{TimeSeries: metrics.TimeSeries{
+				Metric: state.BuiltinMetrics.WSSessions,
+				Tags:   tagsAndMeta.Tags,
+			},
+				Time:     connectionStart,
+				Metadata: tagsAndMeta.Metadata,
+				Value:    1},
+			{TimeSeries: metrics.TimeSeries{
+				Metric: state.BuiltinMetrics.WSConnecting,
+				Tags:   tagsAndMeta.Tags,
+			},
+				Time:     connectionStart,
+				Metadata: tagsAndMeta.Metadata,
+				Value:    metrics.D(connectionEnd.Sub(connectionStart))},
 		},
-		Tags: sampleTags,
+		Tags: tagsAndMeta.Tags,
 		Time: connectionStart,
 	})
 
@@ -120,7 +131,7 @@ func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
 		errorCh:       make(chan error, 1024),
 		closeCh:       make(chan int, 1),
 		recTimeout:    cOpts.receiveTimeout(),
-		sampleTags:    sampleTags,
+		sampleTags:    tagsAndMeta.Tags,
 		samplesOutput: state.Samples,
 	}
 
