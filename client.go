@@ -35,7 +35,7 @@ type Client struct {
 	logger     *logrus.Entry
 	recTimeout time.Duration
 
-	sampleTags    *metrics.SampleTags
+	sampleTags    *metrics.TagSet
 	samplesOutput chan<- metrics.SampleContainer
 }
 
@@ -107,10 +107,12 @@ func (c *Client) send(msg *cableMsg) error {
 
 	err := c.codec.Send(c.conn, msg)
 	metrics.PushIfNotDone(c.vu.Context(), c.samplesOutput, metrics.Sample{
-		Metric: state.BuiltinMetrics.WSMessagesSent,
-		Time:   time.Now(),
-		Tags:   c.sampleTags,
-		Value:  1,
+		TimeSeries: metrics.TimeSeries{
+			Metric: state.BuiltinMetrics.WSMessagesSent,
+			Tags:   c.sampleTags,
+		},
+		Time:  time.Now(),
+		Value: 1,
 	})
 
 	return err
@@ -182,10 +184,12 @@ func (c *Client) receiveLoop() {
 				continue
 			}
 			metrics.PushIfNotDone(c.vu.Context(), c.samplesOutput, metrics.Sample{
-				Metric: state.BuiltinMetrics.WSMessagesReceived,
-				Time:   time.Now(),
-				Tags:   c.sampleTags,
-				Value:  1,
+				TimeSeries: metrics.TimeSeries{
+					Metric: state.BuiltinMetrics.WSMessagesReceived,
+					Tags:   c.sampleTags,
+				},
+				Time:  time.Now(),
+				Value: 1,
 			})
 			continue
 		}
