@@ -26,10 +26,11 @@ go install go.k6.io/xk6/cmd/xk6@latest
 2. Build the binary:
 
 ```shell
-xk6 build --with github.com/anycable/xk6-cable@latest
+# NOTE: currently broken
+# xk6 build --with github.com/anycable/xk6-cable@latest
 
 # you can specify k6 version
-xk6 build v0.38.3 --with github.com/anycable/xk6-cable@latest
+xk6 build v0.41.1 --with github.com/anycable/xk6-cable@latest
 
 # or if you want to build from the local source
 xk6 build --with github.com/anycable/xk6-cable@latest=/path/to/source
