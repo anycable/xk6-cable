@@ -2,12 +2,13 @@ package cable
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/dop251/goja"
 	"github.com/sirupsen/logrus"
+	"go.k6.io/k6/js/modules"
 )
 
 type Channel struct {
@@ -98,21 +99,34 @@ func (ch *Channel) OnMessage(fn goja.Value) {
 }
 
 func (ch *Channel) handleIncoming(msg *cableMsg) {
+	ch.handleAsync(msg)
+
 	if ch.ignoreReads {
 		return
 	}
 
 	ch.readCh <- msg
-
-	ch.handleAsync(msg)
 }
 
 func (ch *Channel) handleAsync(msg *cableMsg) {
+	if msg == nil {
+		return
+	}
+
+	ch.client.mu.Lock()
+	defer ch.client.mu.Unlock()
+
+	if ch.client.disconnected {
+		return
+	}
+
 	for _, h := range ch.asyncHandlers {
 		_, err := h(goja.Undefined(), ch.client.vu.Runtime().ToValue(msg))
 
 		if err != nil {
-			panic(fmt.Sprintf("can't call provided function: %v\n", err))
+			if !strings.Contains(err.Error(), "context canceled") {
+				ch.logger.Errorf("can't call provided function: %s", err)
+			}
 		}
 	}
 }
@@ -122,15 +136,15 @@ type Matcher interface {
 }
 
 type FuncMatcher struct {
-	rt *goja.Runtime
+	vu modules.VU
 	f  goja.Callable
 }
 
 func (m *FuncMatcher) Match(msg interface{}) bool {
-	result, err := m.f(goja.Undefined(), m.rt.ToValue(msg))
+	result, err := m.f(goja.Undefined(), m.vu.Runtime().ToValue(msg))
 
 	if err != nil {
-		panic(fmt.Sprintf("Can't call provided function: %v\n", err))
+		m.vu.State().Logger.Errorf("can't call provided function: %v", err)
 	}
 
 	return result.ToBoolean()
@@ -192,7 +206,7 @@ func (ch *Channel) buildMatcher(cond goja.Value) (Matcher, error) {
 	userFunc, isFunc := goja.AssertFunction(cond)
 
 	if isFunc {
-		return &FuncMatcher{ch.client.vu.Runtime(), userFunc}, nil
+		return &FuncMatcher{ch.client.vu, userFunc}, nil
 	}
 
 	// we need to pass object through json unmarshalling to use same types for numbers

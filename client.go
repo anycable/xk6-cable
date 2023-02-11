@@ -2,6 +2,7 @@ package cable
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,6 +31,8 @@ type Client struct {
 	readCh  chan *cableMsg
 	errorCh chan error
 	closeCh chan int
+
+	disconnected bool
 
 	mu         sync.Mutex
 	logger     *logrus.Entry
@@ -96,7 +99,49 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 }
 
 func (c *Client) Disconnect() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.disconnected {
+		return
+	}
+
+	c.disconnected = true
 	_ = c.conn.Close()
+}
+
+// Repeat function in a loop until it returns false
+func (c *Client) Loop(fn goja.Value) {
+	f, isFunc := goja.AssertFunction(fn)
+
+	if !isFunc {
+		panic("argument must be a function")
+	}
+
+	for {
+		select {
+		case <-c.vu.Context().Done():
+			c.Disconnect()
+			return
+		default:
+			c.mu.Lock()
+			ret, err := f(goja.Undefined())
+			c.mu.Unlock()
+
+			if err != nil {
+				if !strings.Contains(err.Error(), "context canceled") {
+					c.logger.Errorf("loop execution failed: %v", err)
+				}
+				return
+			}
+
+			result := ret.ToBoolean()
+
+			if result {
+				return
+			}
+		}
+	}
 }
 
 func (c *Client) send(msg *cableMsg) error {

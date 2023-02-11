@@ -6,7 +6,7 @@ Comparing to the official [WebSockets support][k6-websockets], `xk6-cable` provi
 
 - Built-in Action Cable API support (no need to manually build or parse protocol messages).
 - Synchronous API to initialize connections and subscriptions.
-- (WIP) AnyCable-specific extensions (e.g., binary encodings)
+- AnyCable-specific extensions (e.g., binary encodings)
 
 > Read also ["Real-time stress: AnyCable, k6, WebSockets, and Yabeda"](https://evilmartians.com/chronicles/real-time-stress-anycable-k6-websockets-and-yabeda?utm_source=xk6-cable-github)
 
@@ -26,11 +26,10 @@ go install go.k6.io/xk6/cmd/xk6@latest
 2. Build the binary:
 
 ```shell
-# NOTE: currently broken
-# xk6 build --with github.com/anycable/xk6-cable@latest
+xk6 build --with github.com/anycable/xk6-cable@latest
 
 # you can specify k6 version
-xk6 build v0.41.1 --with github.com/anycable/xk6-cable@latest
+xk6 build v0.42.0 --with github.com/anycable/xk6-cable@latest
 
 # or if you want to build from the local source
 xk6 build --with github.com/anycable/xk6-cable@latest=/path/to/source
@@ -149,6 +148,45 @@ You can pass the following options to the `connect` method as the second argumen
 ```
 
 **NOTE:** `msgpack` and `protobuf` codecs are only supported by [AnyCable PRO](https://anycable.io#pro).
+
+### OnMessage and Loop
+
+It's possible to write scenarios processing incoming messages asynchronously:
+
+```js
+const chatChannel = client.subscribe("ChatChannel");
+
+chatChannel.onMessage((msg) => {
+  // do smth with message
+});
+
+const presenceChannel = client.subscribe("PresenceChannel");
+presenceChannel.onMessage((msg) => {
+  // do smth with message
+});
+
+// IMPORTANT: the rest of the scenario must be wrapped into a special loop function
+// to avoid JS runtime race conditions
+let i = 0;
+client.loop(() => {
+  chatChannel.perform("speak", {message: "hello"});
+
+  presenceChannel.perform("update", {cursor: 42});
+
+  sleep(randomIntBetween(2, 5));
+
+  i++;
+
+  // Run 5 times and exit
+  if (i > 5) {
+    return true
+  }
+})
+
+sleep(5);
+
+client.disconnect();
+```
 
 More examples could be found in the [examples/](./examples) folder.
 
