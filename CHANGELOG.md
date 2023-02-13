@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+## [0.5.0]
+
+- Add `__timestamp__` field to incoming messages with the receive time (as UTC milliseconds). ([@palkan][])
+
+This should be used to determine the actual time when the message was received (not when it reached JS runtime).
+
 - Add `client.Loop`. ([@palkan][])
 
 This makes it possible to use shared data along with `onMessage` callbacks.

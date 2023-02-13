@@ -60,7 +60,7 @@ func (ch *Channel) Receive(attr goja.Value) interface{} {
 func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 	var results []interface{}
 	timeout := ch.client.recTimeout
-	timer := time.NewTimer(ch.client.recTimeout)
+	timer := time.NewTimer(timeout)
 	matcher, err := ch.buildMatcher(cond)
 
 	if err != nil {
@@ -82,6 +82,30 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 			}
 		case <-timer.C:
 			ch.logger.Warn("receive timeout exceeded; consider increasing receiveTimeoutMs configuration option")
+			return results
+		}
+	}
+}
+
+// ReceiveAll fethes all messages for a given number of seconds.
+func (ch *Channel) ReceiveAll(sec int, cond goja.Value) []interface{} {
+	var results []interface{}
+	timeout := time.Duration(sec) * time.Second
+	timer := time.NewTimer(timeout)
+	matcher, err := ch.buildMatcher(cond)
+
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		select {
+		case msg := <-ch.readCh:
+			if !matcher.Match(msg.Message) {
+				continue
+			}
+			results = append(results, msg.Message)
+		case <-timer.C:
 			return results
 		}
 	}
@@ -121,7 +145,7 @@ func (ch *Channel) handleAsync(msg *cableMsg) {
 	}
 
 	for _, h := range ch.asyncHandlers {
-		_, err := h(goja.Undefined(), ch.client.vu.Runtime().ToValue(msg))
+		_, err := h(goja.Undefined(), ch.client.vu.Runtime().ToValue(msg.Message))
 
 		if err != nil {
 			if !strings.Contains(err.Error(), "context canceled") {

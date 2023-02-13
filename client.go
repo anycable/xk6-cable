@@ -92,7 +92,7 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 			c.logger.Errorf("subscription to `%v`: rejected\n", channelName)
 			return nil, nil
 		case <-timer:
-			c.logger.Errorf("subscription to `%v`: timeout exceeded. Consider increasing receiveTimeoutMs configuration option\n", channelName)
+			c.logger.Errorf("subscription to `%v`: timeout exceeded. Consider increasing receiveTimeoutMs configuration option (current: %d)\n", channelName, c.recTimeout)
 			return nil, nil
 		}
 	}
@@ -135,7 +135,9 @@ func (c *Client) Loop(fn goja.Value) {
 				return
 			}
 
+			c.mu.Lock()
 			result := ret.ToBoolean()
+			c.mu.Unlock()
 
 			if result {
 				return
@@ -264,6 +266,13 @@ func (c *Client) receiveIgnoringPing() (*cableMsg, error) {
 
 		if msg.Type == "ping" {
 			continue
+		}
+
+		timestamp := int64(time.Now().UnixNano()) / 1_000_000
+
+		if data, ok := msg.Message.(map[string]interface{}); ok {
+			data["__timestamp__"] = timestamp
+			msg.Message = data
 		}
 
 		return &msg, nil

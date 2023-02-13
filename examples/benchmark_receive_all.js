@@ -42,28 +42,7 @@ export default function () {
     fail("failed to subscribe");
   }
 
-  channel.ignoreReads();
-
-  channel.onMessage(data => {
-    let now = Date.now();
-    let { message } = data;
-
-    if (!message) {
-      console.log(data);
-      return
-    }
-
-    if (message.action == "broadcast") {
-      broadcastsRcvd.add(1);
-      let ts = message.ts;
-      rttTrend.add(now - ts);
-    }
-  })
-
-  let i = 0;
-
-  client.loop(() => {
-    i++;
+  for(let i = 0; ; i++) {
     // Sampling
     if (randomIntBetween(1, 10) > 8) {
       let start = Date.now();
@@ -73,5 +52,19 @@ export default function () {
     }
 
     sleep(randomIntBetween(5, 10) / 100);
-  })
+
+    let incoming = channel.receiveAll(1);
+
+    for(let message of incoming) {
+      let received = message.__timestamp__ || Date.now();
+
+      if (message.action == "broadcast") {
+        broadcastsRcvd.add(1);
+        let ts = message.ts;
+        rttTrend.add(received - ts);
+      }
+    }
+
+    sleep(randomIntBetween(5, 10) / 100);
+  }
 }

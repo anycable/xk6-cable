@@ -149,45 +149,6 @@ You can pass the following options to the `connect` method as the second argumen
 
 **NOTE:** `msgpack` and `protobuf` codecs are only supported by [AnyCable PRO](https://anycable.io#pro).
 
-### OnMessage and Loop
-
-It's possible to write scenarios processing incoming messages asynchronously:
-
-```js
-const chatChannel = client.subscribe("ChatChannel");
-
-chatChannel.onMessage((msg) => {
-  // do smth with message
-});
-
-const presenceChannel = client.subscribe("PresenceChannel");
-presenceChannel.onMessage((msg) => {
-  // do smth with message
-});
-
-// IMPORTANT: the rest of the scenario must be wrapped into a special loop function
-// to avoid JS runtime race conditions
-let i = 0;
-client.loop(() => {
-  chatChannel.perform("speak", {message: "hello"});
-
-  presenceChannel.perform("update", {cursor: 42});
-
-  sleep(randomIntBetween(2, 5));
-
-  i++;
-
-  // Run 5 times and exit
-  if (i > 5) {
-    return true
-  }
-})
-
-sleep(5);
-
-client.disconnect();
-```
-
 More examples could be found in the [examples/](./examples) folder.
 
 ## Contributing
