@@ -1,7 +1,7 @@
 import { Rate } from 'k6/metrics'
 
 import {
-  testTurboStreamName,
+  testTurboStreamSource,
   testCableUrl,
   testCsrfToken,
   testCsrfParam,
@@ -11,7 +11,7 @@ import {
 let testCasesOK = new Rate('test_case_ok')
 
 const testCases = [
-  testTurboStreamName,
+  testTurboStreamSource,
   testCableUrl,
   testCsrfToken,
   testCsrfParam,
