@@ -5,7 +5,7 @@ import {
   testCableUrl,
   testCsrfToken,
   testCsrfParam,
-  testFetchMeta
+  testReadMeta
 } from './k6-rails/0.1.0/index.test.js'
 
 let testCasesOK = new Rate('test_case_ok')
@@ -15,7 +15,7 @@ const testCases = [
   testCableUrl,
   testCsrfToken,
   testCsrfParam,
-  testFetchMeta,
+  testReadMeta,
 ]
 
 export const options = {

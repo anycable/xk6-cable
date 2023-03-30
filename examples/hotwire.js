@@ -4,6 +4,7 @@ import { check, sleep, fail } from "k6";
 import http from "k6/http";
 import cable from "k6/x/cable";
 import { randomIntBetween } from "https://jslib.k6.io/k6-utils/1.1.0/index.js";
+import { cableUrl, turboStreamName } from 'http://anycable.io/xk6-cable/jslib/k6-rails/0.1.0/index.js'
 
 import { Trend } from "k6/metrics";
 
@@ -11,22 +12,6 @@ let rttTrend = new Trend("rtt", true);
 
 let userId = `100${__VU}`;
 let userName = `Kay${userId}`;
-
-// Find and return action-cable-url on the page
-function cableUrl(doc) {
-  let el = doc.find('meta[name="action-cable-url"]');
-  if (!el) return;
-
-  return el.attr("content");
-}
-
-// Find and return the Turbo stream name
-function turboStreamName(doc) {
-  let el = doc.find("turbo-cable-stream-source");
-  if (!el) return;
-
-  return el.attr("signed-stream-name");
-}
 
 export default function () {
   // Manually set authentication cookies

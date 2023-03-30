@@ -10,6 +10,8 @@ Comparing to the official [WebSockets support][k6-websockets], `xk6-cable` provi
 
 > Read also ["Real-time stress: AnyCable, k6, WebSockets, and Yabeda"](https://evilmartians.com/chronicles/real-time-stress-anycable-k6-websockets-and-yabeda?utm_source=xk6-cable-github)
 
+We also provide [JS helpers](#js-helpers) to simplify writing benchmarks for Rails applications.
+
 ## Build
 
 To build a `k6` binary with this extension, first ensure you have the prerequisites:
@@ -150,6 +152,69 @@ You can pass the following options to the `connect` method as the second argumen
 **NOTE:** `msgpack` and `protobuf` codecs are only supported by [AnyCable PRO](https://anycable.io#pro).
 
 More examples could be found in the [examples/](./examples) folder.
+
+## JS helpers for k6
+
+We provide a collection of utils to simplify development of k6 scripts for Rails applications (w/Action Cable or AnyCable):
+
+```js
+import {
+  cableUrl, // reads the value of the action-cable-url (or cable-url) meta value
+  turboStreamName, // find and returns a stream name from the <turbo-cable-stream-source> element
+  csrfToken, // reads the value of the csrf-token meta value
+  csrfParam, // reads the value of the csrf-param meta value
+  readMeta, // reads the value of the meta tag with the given name
+} from 'http://anycable.io/xk6-cable/jslib/k6-rails/0.1.0/index.js'
+
+export default function () {
+  let res = http.get("http://localhost:3000/home");
+
+  if (
+    !check(res, {
+      "is status 200": (r) => r.status === 200,
+    })
+  ) {
+    fail("couldn't open page");
+  }
+
+  const html = res.html();
+  const wsUrl = cableUrl(html);
+
+  if (!wsUrl) {
+    fail("couldn't find cable url on the page");
+  }
+
+  let client = cable.connect(wsUrl);
+
+  if (
+    !check(client, {
+      "successful connection": (obj) => obj,
+    })
+  ) {
+    fail("connection failed");
+  }
+
+  let streamName = turboStreamName(html);
+
+  if (!streamName) {
+    fail("couldn't find a turbo stream element");
+  }
+
+  let channel = client.subscribe("Turbo::StreamsChannel", {
+    signed_stream_name: streamName,
+  });
+
+  if (
+    !check(channel, {
+      "successful subscription": (obj) => obj,
+    })
+  ) {
+    fail("failed to subscribe");
+  }
+
+  // ...
+}
+```
 
 ## Contributing
 
