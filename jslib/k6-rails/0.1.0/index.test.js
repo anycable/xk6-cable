@@ -1,16 +1,20 @@
 import { check } from 'k6'
 
-import { turboStreamName, cableUrl, csrfToken, csrfParam, readMeta } from './index.js';
+import { turboStreamSource, cableUrl, csrfToken, csrfParam, readMeta } from './index.js';
 
-function testTurboStreamName() {
+function testTurboStreamSource() {
   const mockedData = {
     find: (_) => {
-        return { attr: (_) => 'test name' }
+        return {
+          attr: (name) => {
+            if (name === 'signed-stream-name') return 'test name'
+          }
+        }
     }
   };
 
-  check(turboStreamName(mockedData), {
-    'turboStreamName works': (r) => r === 'test name'
+  check(turboStreamSource(mockedData), {
+    'turboStreamSource works': (r) => r.streamName === 'test name' && r.channelName === 'Turbo::StreamsChannel'
   })
 }
 
@@ -63,7 +67,7 @@ function testReadMeta() {
 }
 
 export {
-  testTurboStreamName,
+  testTurboStreamSource,
   testCableUrl,
   testCsrfToken,
   testCsrfParam,

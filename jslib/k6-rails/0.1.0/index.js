@@ -1,9 +1,9 @@
 // Find and return the Turbo stream name
-export function turboStreamName(doc) {
+export function turboStreamSource(doc) {
   let el = doc.find("turbo-cable-stream-source");
   if (!el) return;
 
-  return el.attr("signed-stream-name");
+  return { streamName: el.attr("signed-stream-name"), channelName: el.attr("channel") || "Turbo::StreamsChannel" };
 }
 
 // Find and return action-cable-url on the page

@@ -160,11 +160,11 @@ We provide a collection of utils to simplify development of k6 scripts for Rails
 ```js
 import {
   cableUrl, // reads the value of the action-cable-url (or cable-url) meta value
-  turboStreamName, // find and returns a stream name from the <turbo-cable-stream-source> element
+  turboStreamSource, // find and returns a stream name and a channel name from the <turbo-cable-stream-source> element
   csrfToken, // reads the value of the csrf-token meta value
   csrfParam, // reads the value of the csrf-param meta value
   readMeta, // reads the value of the meta tag with the given name
-} from 'http://anycable.io/xk6-cable/jslib/k6-rails/0.1.0/index.js'
+} from 'https://anycable.io/xk6-cable/jslib/k6-rails/0.1.0/index.js'
 
 export default function () {
   let res = http.get("http://localhost:3000/home");
@@ -194,13 +194,13 @@ export default function () {
     fail("connection failed");
   }
 
-  let streamName = turboStreamName(html);
+  let { streamName, channelName } = turboStreamSource(html);
 
   if (!streamName) {
     fail("couldn't find a turbo stream element");
   }
 
-  let channel = client.subscribe("Turbo::StreamsChannel", {
+  let channel = client.subscribe(channelName, {
     signed_stream_name: streamName,
   });
 
