@@ -1,6 +1,6 @@
 import { check } from 'k6'
 
-import { turboStreamName, cableUrl, csrfToken, csrfParam, fetchMeta } from './index.js';
+import { turboStreamName, cableUrl, csrfToken, csrfParam, readMeta } from './index.js';
 
 function testTurboStreamName() {
   const mockedData = {
@@ -50,15 +50,15 @@ function testCsrfParam() {
   })
 }
 
-function testFetchMeta() {
+function testReadMeta() {
   const mockedData = {
     find: (_) => {
       return { attr: (_) => 'width=device-width, initial-scale=1' }
     }
   }
 
-  check(fetchMeta(mockedData, 'name', 'viewport', 'content'), {
-    'fetchMeta works': (r) => r === 'width=device-width, initial-scale=1'
+  check(readMeta(mockedData, 'name', 'viewport', 'content'), {
+    'readMeta works': (r) => r === 'width=device-width, initial-scale=1'
   })
 }
 
@@ -67,5 +67,5 @@ export {
   testCableUrl,
   testCsrfToken,
   testCsrfParam,
-  testFetchMeta,
+  testReadMeta,
 }

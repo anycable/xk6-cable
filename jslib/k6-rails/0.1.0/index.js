@@ -8,22 +8,22 @@ export function turboStreamName(doc) {
 
 // Find and return action-cable-url on the page
 export function cableUrl(doc) {
-  return fetchMeta(doc, 'name', 'action-cable-url')
+  return readMeta(doc, 'action-cable-url')
 }
 
 // Find and return csrf-token on the page
 export function csrfToken(doc) {
-  return fetchMeta(doc, 'name', 'csrf-token')
+  return readMeta(doc, 'csrf-token')
 }
 
 // Find and return csrf-param on the page
 export function csrfParam(doc) {
-  return fetchMeta(doc, 'name', 'csrf-param')
+  return readMeta(doc, 'csrf-param')
 }
 
 // Find and return meta attributes' value
-export function fetchMeta(doc, attr, attrVal, attrContent = 'content') {
-  let el = doc.find(`meta[${attr.toString()}=${attrVal.toString()}]`)
+export function readMeta(doc, name, attrContent = 'content') {
+  let el = doc.find(`meta[name=${name.toString()}]`)
   if (!el) return;
 
   return el.attr(attrContent.toString())

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+- Add JS helpers.
+
+```js
+import { cableUrl, turboStreamName } from 'http://anycable.io/xk6-cable/jslib/k6-rails/0.1.0/index.js'
+
+export default function () {
+  let res = http.get("http://localhost:3000/home");
+  const html = res.html();
+
+  const wsUrl = cableUrl(html);
+  let client = cable.connect(wsUrl);
+
+  let streamName = turboStreamName(html);
+
+  let channel = client.subscribe("Turbo::StreamsChannel", {
+    signed_stream_name: streamName,
+  });
+
+  // ...
+}
+```
+
 ## [0.5.0]
 
 - Add `__timestamp__` field to incoming messages with the receive time (as UTC milliseconds). ([@palkan][])
