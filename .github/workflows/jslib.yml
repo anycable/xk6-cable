@@ -1,0 +1,23 @@
+name: JS test
+on:
+  schedule:
+  - cron:  '42 7 * * *'
+  push:
+    branches:
+      - master
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  jstest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install k6
+        run: go install go.k6.io/k6@master
+      - name: Run JS tests
+        run: make test-js
