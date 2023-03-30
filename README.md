@@ -10,7 +10,7 @@ Comparing to the official [WebSockets support][k6-websockets], `xk6-cable` provi
 
 > Read also ["Real-time stress: AnyCable, k6, WebSockets, and Yabeda"](https://evilmartians.com/chronicles/real-time-stress-anycable-k6-websockets-and-yabeda?utm_source=xk6-cable-github)
 
-We also provide [JS helpers](#js-helpers) to simplify writing benchmarks for Rails applications.
+We also provide [JS helpers](#js-helpers-for-k6) to simplify writing benchmarks for Rails applications.
 
 ## Build
 
