@@ -135,7 +135,11 @@ func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
 		samplesOutput: state.Samples,
 	}
 
-	client.start()
+	err = client.start()
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &client, nil
 }

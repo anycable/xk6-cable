@@ -166,10 +166,16 @@ func (c *Client) send(msg *cableMsg) error {
 }
 
 // start waits for the welcome message and then starts receive and handle loops.
-func (c *Client) start() {
-	c.receiveWelcomeMsg()
+func (c *Client) start() error {
+	err := c.receiveWelcomeMsg()
+	if err != nil {
+		return err
+	}
+
 	go c.handleLoop()
 	go c.receiveLoop()
+
+	return nil
 }
 
 func (c *Client) handleLoop() {
@@ -243,17 +249,18 @@ func (c *Client) receiveLoop() {
 	}
 }
 
-func (c *Client) receiveWelcomeMsg() {
+func (c *Client) receiveWelcomeMsg() error {
 	obj, err := c.receiveIgnoringPing()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if obj.Type != "welcome" {
 		c.logger.Errorf("expected welcome msg, got %v", obj)
-
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func (c *Client) receiveIgnoringPing() (*cableMsg, error) {
