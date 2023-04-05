@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+## [0.6.0]
+
 - Add JS helpers.
 
 ```js
