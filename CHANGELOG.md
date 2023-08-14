@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+- Add `client.subscribeAsync` to issue a `subscribe` command without waiting for the confirmation. ([@palkan][])
+
+- Fix `k6` / Logrus compatibility issue. ([@palkan][])
+
 ## [0.6.0]
 
 - Add JS helpers.

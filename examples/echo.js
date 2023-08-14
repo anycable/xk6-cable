@@ -3,7 +3,8 @@ import cable from "k6/x/cable";
 
 export default function () {
   const client = cable.connect("ws://localhost:8080/cable");
-  const channel = client.subscribe("BenchmarkChannel");
+  const channelPromise = client.subscribeAsync("BenchmarkChannel");
+  const channel = channelPromise.await();
 
   channel.perform("echo", { foo: 1 });
   const res = channel.receive();

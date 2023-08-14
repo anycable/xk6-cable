@@ -67,7 +67,9 @@ func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
 	level, err := logrus.ParseLevel(cOpts.LogLevel)
 
 	if err == nil {
-		state.Logger.SetLevel(level)
+		if logger, ok := state.Logger.(*logrus.Logger); ok {
+			logger.SetLevel(level)
+		}
 	}
 
 	logger := state.Logger.WithField("source", "cable")

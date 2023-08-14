@@ -16,6 +16,7 @@ type Channel struct {
 	identifier string
 
 	logger *logrus.Entry
+
 	confCh chan bool
 	readCh chan *cableMsg
 
@@ -120,6 +121,10 @@ func (ch *Channel) OnMessage(fn goja.Value) {
 	}
 
 	ch.asyncHandlers = append(ch.asyncHandlers, f)
+}
+
+func (ch *Channel) handleAck(val bool) {
+	ch.confCh <- val
 }
 
 func (ch *Channel) handleIncoming(msg *cableMsg) {

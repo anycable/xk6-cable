@@ -2,6 +2,7 @@ package cable
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +45,47 @@ type Client struct {
 
 // Subscribe creates and returns Channel
 func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, error) {
+	promise, err := c.SubscribeAsync(channelName, paramsIn)
+
+	if err != nil {
+		return nil, err
+	}
+
+	channel, err := promise.Await(int(c.recTimeout.Milliseconds()))
+
+	if err != nil {
+		return nil, err
+	} else {
+		return channel, nil
+	}
+}
+
+type SubscribePromise struct {
+	client  *Client
+	channel *Channel
+}
+
+func (sp *SubscribePromise) Await(ms int) (*Channel, error) {
+	if ms == 0 {
+		ms = int(sp.client.recTimeout.Milliseconds())
+	}
+
+	timer := time.After(time.Duration(ms) * time.Millisecond)
+
+	select {
+	case confirmed := <-sp.channel.confCh:
+		if confirmed {
+			sp.client.logger.Debugf("subscribed to `%v`\n", sp.channel.identifier)
+			return sp.channel, nil
+		}
+		return nil, fmt.Errorf("subscription to `%v`: rejected", sp.channel.identifier)
+	case <-timer:
+		return nil, fmt.Errorf("subscription to `%v`: timeout exceeded. Consider increasing receiveTimeoutMs configuration option (current: %d)", sp.channel.identifier, ms)
+	}
+}
+
+// Subscribe creates and returns Channel
+func (c *Client) SubscribeAsync(channelName string, paramsIn goja.Value) (*SubscribePromise, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -65,7 +107,7 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 
 	if c.channels[identifier] != nil {
 		c.logger.Warnf("already subscribed to `%v` channel\n", channelName)
-		return c.channels[identifier], nil
+		return &SubscribePromise{client: c, channel: c.channels[identifier]}, nil
 	}
 
 	if err := c.send(&cableMsg{Command: "subscribe", Identifier: identifier}); err != nil {
@@ -81,21 +123,7 @@ func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, e
 	}
 	c.channels[identifier] = channel
 
-	timer := time.After(c.recTimeout)
-	for {
-		select {
-		case confirmed := <-channel.confCh:
-			if confirmed {
-				c.logger.Debugf("subscribed to `%v`\n", channelName)
-				return channel, nil
-			}
-			c.logger.Errorf("subscription to `%v`: rejected\n", channelName)
-			return nil, nil
-		case <-timer:
-			c.logger.Errorf("subscription to `%v`: timeout exceeded. Consider increasing receiveTimeoutMs configuration option (current: %d)\n", channelName, c.recTimeout)
-			return nil, nil
-		}
-	}
+	return &SubscribePromise{client: c, channel: channel}, nil
 }
 
 func (c *Client) Disconnect() {
@@ -185,9 +213,9 @@ func (c *Client) handleLoop() {
 			if c.channels[msg.Identifier] != nil {
 				switch msg.Type {
 				case "confirm_subscription":
-					c.channels[msg.Identifier].confCh <- true
+					c.channels[msg.Identifier].handleAck(true)
 				case "reject_subscription":
-					c.channels[msg.Identifier].confCh <- false
+					c.channels[msg.Identifier].handleAck(false)
 				default:
 					c.channels[msg.Identifier].handleIncoming(msg)
 				}

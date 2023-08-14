@@ -90,6 +90,15 @@ export default function () {
 
   sleep(1);
 
+  // You can also subscribe to a channel asynchrounsly and wait for the confirmation later
+  // That allows to send multiple subscribe commands at once in a non-blocking way
+  const channelSubscribed = client.subscribeAsync("EchoChannel", { foo: 1 });
+  const anotherChannelSubscribed = client.subscribeAsync("EchoChannel", { foo: 2 });
+
+  // Wait for the confirmation
+  channelSubscribed.await();
+  anotherChannelSubscribed.await();
+
   // Terminate the WS connection
   client.disconnect()
 }
