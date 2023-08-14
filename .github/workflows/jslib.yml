@@ -1,11 +1,12 @@
 name: JS test
 on:
-  schedule:
-  - cron:  '42 7 * * *'
   push:
     branches:
       - master
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron:  '42 7 * * *'
 
 defaults:
   run:
