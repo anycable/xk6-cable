@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+- Add `channel.ackDuration()` to get the number of milliseconds to wait for a subscription confirmation/rejection. ([@palkan][])
+
 - Add `client.subscribeAsync` to issue a `subscribe` command without waiting for the confirmation. ([@palkan][])
 
 - Fix `k6` / Logrus compatibility issue. ([@palkan][])

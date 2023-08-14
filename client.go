@@ -21,6 +21,8 @@ type cableMsg struct {
 	Identifier string      `json:"identifier,omitempty"`
 	Data       string      `json:"data,omitempty"`
 	Message    interface{} `json:"message,omitempty"`
+
+	receivedAt time.Time
 }
 
 type Client struct {
@@ -110,17 +112,12 @@ func (c *Client) SubscribeAsync(channelName string, paramsIn goja.Value) (*Subsc
 		return &SubscribePromise{client: c, channel: c.channels[identifier]}, nil
 	}
 
+	channel := NewChannel(c, identifier)
+
 	if err := c.send(&cableMsg{Command: "subscribe", Identifier: identifier}); err != nil {
 		return nil, err
 	}
 
-	channel := &Channel{
-		client:     c,
-		identifier: identifier,
-		logger:     c.logger,
-		readCh:     make(chan *cableMsg, 2048),
-		confCh:     make(chan bool, 1),
-	}
 	c.channels[identifier] = channel
 
 	return &SubscribePromise{client: c, channel: channel}, nil
@@ -213,9 +210,9 @@ func (c *Client) handleLoop() {
 			if c.channels[msg.Identifier] != nil {
 				switch msg.Type {
 				case "confirm_subscription":
-					c.channels[msg.Identifier].handleAck(true)
+					c.channels[msg.Identifier].handleAck(true, msg.receivedAt)
 				case "reject_subscription":
-					c.channels[msg.Identifier].handleAck(false)
+					c.channels[msg.Identifier].handleAck(false, msg.receivedAt)
 				default:
 					c.channels[msg.Identifier].handleIncoming(msg)
 				}
@@ -302,6 +299,8 @@ func (c *Client) receiveIgnoringPing() (*cableMsg, error) {
 		if msg.Type == "ping" {
 			continue
 		}
+
+		msg.receivedAt = time.Now()
 
 		timestamp := int64(time.Now().UnixNano()) / 1_000_000
 

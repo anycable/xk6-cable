@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dop251/goja"
@@ -18,11 +19,26 @@ type Channel struct {
 	logger *logrus.Entry
 
 	confCh chan bool
+	ackMu  sync.Mutex
 	readCh chan *cableMsg
 
 	asyncHandlers []goja.Callable
 
 	ignoreReads bool
+
+	createdAt time.Time
+	ackedAt   time.Time
+}
+
+func NewChannel(c *Client, identifier string) *Channel {
+	return &Channel{
+		client:     c,
+		identifier: identifier,
+		logger:     c.logger,
+		readCh:     make(chan *cableMsg, 2048),
+		confCh:     make(chan bool, 1),
+		createdAt:  time.Now(),
+	}
 }
 
 // Perform sends passed action with additional data to the channel
@@ -123,7 +139,18 @@ func (ch *Channel) OnMessage(fn goja.Value) {
 	ch.asyncHandlers = append(ch.asyncHandlers, f)
 }
 
-func (ch *Channel) handleAck(val bool) {
+func (ch *Channel) AckDuration() int64 {
+	ch.ackMu.Lock()
+	defer ch.ackMu.Unlock()
+
+	return ch.ackedAt.Sub(ch.createdAt).Milliseconds()
+}
+
+func (ch *Channel) handleAck(val bool, when time.Time) {
+	ch.ackMu.Lock()
+	defer ch.ackMu.Unlock()
+
+	ch.ackedAt = when
 	ch.confCh <- val
 }
 

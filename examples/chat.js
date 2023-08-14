@@ -5,6 +5,7 @@ import { randomIntBetween } from "https://jslib.k6.io/k6-utils/1.1.0/index.js";
 import { Trend } from "k6/metrics";
 
 let rttTrend = new Trend("rtt", true);
+let subTrend = new Trend("suback", true);
 
 let userId = `100${__VU}`;
 let userName = `Kay${userId}`;
@@ -43,9 +44,9 @@ export default function () {
   });
 
   if (
-      !check(client, {
-        "successful connection": (obj) => obj,
-      })
+    !check(client, {
+      "successful connection": (obj) => obj,
+    })
   ) {
     fail("connection failed");
   }
@@ -53,12 +54,14 @@ export default function () {
   let channel = client.subscribe("ChatChannel", { id: WORKSPACE });
 
   if (
-      !check(channel, {
-        "successful subscription": (obj) => obj,
-      })
+    !check(channel, {
+      "successful subscription": (obj) => obj,
+    })
   ) {
     fail("failed to subscribe");
   }
+
+  subTrend.add(channel.ackDuration());
 
   for (let i = 0; i < MESSAGES_NUM; i++) {
     let startMessage = Date.now();
@@ -67,9 +70,9 @@ export default function () {
     let message = channel.receive({ author_id: userId });
 
     if (
-        !check(message, {
-          "received its own message": (obj) => obj,
-        })
+      !check(message, {
+        "received its own message": (obj) => obj,
+      })
     ) {
       fail("expected message hasn't been received");
     }
