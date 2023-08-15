@@ -281,8 +281,7 @@ func (c *Client) receiveWelcomeMsg() error {
 	}
 
 	if obj.Type != "welcome" {
-		c.logger.Errorf("expected welcome msg, got %v", obj)
-		return err
+		return fmt.Errorf("expected welcome msg, got %v", obj)
 	}
 
 	return nil

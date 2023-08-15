@@ -140,7 +140,8 @@ func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
 	err = client.start()
 
 	if err != nil {
-		return nil, err
+		logger.Errorf("failed to initialize Action Cable connection: %v", err)
+		return nil, nil
 	}
 
 	return &client, nil
