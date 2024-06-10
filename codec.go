@@ -63,7 +63,6 @@ var ProtobufCodec = &Codec{
 		}
 
 		raw, err := ioutil.ReadAll(r)
-
 		if err != nil {
 			return err
 		}
