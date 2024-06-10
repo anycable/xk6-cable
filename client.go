@@ -10,8 +10,8 @@ import (
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/metrics"
 
-	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
+	"github.com/grafana/sobek"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,9 +46,8 @@ type Client struct {
 }
 
 // Subscribe creates and returns Channel
-func (c *Client) Subscribe(channelName string, paramsIn goja.Value) (*Channel, error) {
+func (c *Client) Subscribe(channelName string, paramsIn sobek.Value) (*Channel, error) {
 	promise, err := c.SubscribeAsync(channelName, paramsIn)
-
 	if err != nil {
 		return nil, err
 	}
@@ -87,12 +86,11 @@ func (sp *SubscribePromise) Await(ms int) (*Channel, error) {
 }
 
 // Subscribe creates and returns Channel
-func (c *Client) SubscribeAsync(channelName string, paramsIn goja.Value) (*SubscribePromise, error) {
+func (c *Client) SubscribeAsync(channelName string, paramsIn sobek.Value) (*SubscribePromise, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	params, err := c.parseParams(paramsIn)
-
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +98,6 @@ func (c *Client) SubscribeAsync(channelName string, paramsIn goja.Value) (*Subsc
 	params["channel"] = channelName
 
 	identifierJSON, err := json.Marshal(params)
-
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +133,8 @@ func (c *Client) Disconnect() {
 }
 
 // Repeat function in a loop until it returns false
-func (c *Client) Loop(fn goja.Value) {
-	f, isFunc := goja.AssertFunction(fn)
+func (c *Client) Loop(fn sobek.Value) {
+	f, isFunc := sobek.AssertFunction(fn)
 
 	if !isFunc {
 		panic("argument must be a function")
@@ -150,7 +147,7 @@ func (c *Client) Loop(fn goja.Value) {
 			return
 		default:
 			c.mu.Lock()
-			ret, err := f(goja.Undefined())
+			ret, err := f(sobek.Undefined())
 			c.mu.Unlock()
 
 			if err != nil {
@@ -310,13 +307,12 @@ func (c *Client) receiveIgnoringPing() (*cableMsg, error) {
 
 		return &msg, nil
 	}
-
 }
 
-func (c *Client) parseParams(in goja.Value) (map[string]interface{}, error) {
+func (c *Client) parseParams(in sobek.Value) (map[string]interface{}, error) {
 	params := make(map[string]interface{})
 
-	if in == nil || goja.IsUndefined(in) || goja.IsNull(in) {
+	if in == nil || sobek.IsUndefined(in) || sobek.IsNull(in) {
 		return params, nil
 	}
 

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/sirupsen/logrus"
 	"go.k6.io/k6/js/modules"
 )
@@ -22,7 +22,7 @@ type Channel struct {
 	ackMu  sync.Mutex
 	readCh chan *cableMsg
 
-	asyncHandlers []goja.Callable
+	asyncHandlers []sobek.Callable
 
 	ignoreReads bool
 
@@ -42,7 +42,7 @@ func NewChannel(c *Client, identifier string) *Channel {
 }
 
 // Perform sends passed action with additional data to the channel
-func (ch *Channel) Perform(action string, attr goja.Value) error {
+func (ch *Channel) Perform(action string, attr sobek.Value) error {
 	rt := ch.client.vu.Runtime()
 	obj := attr.ToObject(rt).Export().(map[string]interface{})
 	obj["action"] = action
@@ -64,7 +64,7 @@ func (ch *Channel) IgnoreReads() {
 }
 
 // Receive checks channels messages query for message, sugar for ReceiveN(1, attrs)
-func (ch *Channel) Receive(attr goja.Value) interface{} {
+func (ch *Channel) Receive(attr sobek.Value) interface{} {
 	results := ch.ReceiveN(1, attr)
 	if len(results) == 0 {
 		return nil
@@ -74,12 +74,11 @@ func (ch *Channel) Receive(attr goja.Value) interface{} {
 }
 
 // ReceiveN checks channels messages query for provided number of messages satisfying provided condition.
-func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
+func (ch *Channel) ReceiveN(n int, cond sobek.Value) []interface{} {
 	var results []interface{}
 	timeout := ch.client.recTimeout
 	timer := time.NewTimer(timeout)
 	matcher, err := ch.buildMatcher(cond)
-
 	if err != nil {
 		panic(err)
 	}
@@ -105,12 +104,11 @@ func (ch *Channel) ReceiveN(n int, cond goja.Value) []interface{} {
 }
 
 // ReceiveAll fethes all messages for a given number of seconds.
-func (ch *Channel) ReceiveAll(sec int, cond goja.Value) []interface{} {
+func (ch *Channel) ReceiveAll(sec int, cond sobek.Value) []interface{} {
 	var results []interface{}
 	timeout := time.Duration(sec) * time.Second
 	timer := time.NewTimer(timeout)
 	matcher, err := ch.buildMatcher(cond)
-
 	if err != nil {
 		panic(err)
 	}
@@ -129,8 +127,8 @@ func (ch *Channel) ReceiveAll(sec int, cond goja.Value) []interface{} {
 }
 
 // Register callback to receive messages asynchronously
-func (ch *Channel) OnMessage(fn goja.Value) {
-	f, isFunc := goja.AssertFunction(fn)
+func (ch *Channel) OnMessage(fn sobek.Value) {
+	f, isFunc := sobek.AssertFunction(fn)
 
 	if !isFunc {
 		panic("argument must be a function")
@@ -177,8 +175,7 @@ func (ch *Channel) handleAsync(msg *cableMsg) {
 	}
 
 	for _, h := range ch.asyncHandlers {
-		_, err := h(goja.Undefined(), ch.client.vu.Runtime().ToValue(msg.Message))
-
+		_, err := h(sobek.Undefined(), ch.client.vu.Runtime().ToValue(msg.Message))
 		if err != nil {
 			if !strings.Contains(err.Error(), "context canceled") {
 				ch.logger.Errorf("can't call provided function: %s", err)
@@ -193,12 +190,11 @@ type Matcher interface {
 
 type FuncMatcher struct {
 	vu modules.VU
-	f  goja.Callable
+	f  sobek.Callable
 }
 
 func (m *FuncMatcher) Match(msg interface{}) bool {
-	result, err := m.f(goja.Undefined(), m.vu.Runtime().ToValue(msg))
-
+	result, err := m.f(sobek.Undefined(), m.vu.Runtime().ToValue(msg))
 	if err != nil {
 		m.vu.State().Logger.Errorf("can't call provided function: %v", err)
 	}
@@ -250,16 +246,16 @@ func (PassthruMatcher) Match(_ interface{}) bool {
 // - when condition is a func, result of func(msg) is used as a result of match
 // - when condition is a string, match is successful when message matches provided string
 // - when condition is an object, match is successful when message includes all object attributes
-func (ch *Channel) buildMatcher(cond goja.Value) (Matcher, error) {
-	if cond == nil || goja.IsUndefined(cond) || goja.IsNull(cond) {
+func (ch *Channel) buildMatcher(cond sobek.Value) (Matcher, error) {
+	if cond == nil || sobek.IsUndefined(cond) || sobek.IsNull(cond) {
 		return &PassthruMatcher{}, nil
 	}
 
-	if _, ok := cond.(*goja.Symbol); ok {
+	if _, ok := cond.(*sobek.Symbol); ok {
 		return &StringMatcher{cond.String()}, nil
 	}
 
-	userFunc, isFunc := goja.AssertFunction(cond)
+	userFunc, isFunc := sobek.AssertFunction(cond)
 
 	if isFunc {
 		return &FuncMatcher{ch.client.vu, userFunc}, nil

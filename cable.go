@@ -13,8 +13,8 @@ import (
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/metrics"
 
-	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
+	"github.com/grafana/sobek"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,7 +22,7 @@ import (
 var errCableInInitContext = common.NewInitContextError("using cable in the init context is not supported")
 
 // Connect connects to the websocket, creates and starts client, and returns it to the js.
-func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
+func (c *Cable) Connect(cableUrl string, opts sobek.Value) (*Client, error) {
 	state := c.vu.State()
 	if state == nil {
 		return nil, errCableInInitContext
@@ -99,20 +99,24 @@ func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
 
 	metrics.PushIfNotDone(c.vu.Context(), state.Samples, metrics.ConnectedSamples{
 		Samples: []metrics.Sample{
-			{TimeSeries: metrics.TimeSeries{
-				Metric: state.BuiltinMetrics.WSSessions,
-				Tags:   tagsAndMeta.Tags,
-			},
+			{
+				TimeSeries: metrics.TimeSeries{
+					Metric: state.BuiltinMetrics.WSSessions,
+					Tags:   tagsAndMeta.Tags,
+				},
 				Time:     connectionStart,
 				Metadata: tagsAndMeta.Metadata,
-				Value:    1},
-			{TimeSeries: metrics.TimeSeries{
-				Metric: state.BuiltinMetrics.WSConnecting,
-				Tags:   tagsAndMeta.Tags,
+				Value:    1,
 			},
+			{
+				TimeSeries: metrics.TimeSeries{
+					Metric: state.BuiltinMetrics.WSConnecting,
+					Tags:   tagsAndMeta.Tags,
+				},
 				Time:     connectionStart,
 				Metadata: tagsAndMeta.Metadata,
-				Value:    metrics.D(connectionEnd.Sub(connectionStart))},
+				Value:    metrics.D(connectionEnd.Sub(connectionStart)),
+			},
 		},
 		Tags: tagsAndMeta.Tags,
 		Time: connectionStart,
@@ -138,7 +142,6 @@ func (c *Cable) Connect(cableUrl string, opts goja.Value) (*Client, error) {
 	}
 
 	err = client.start()
-
 	if err != nil {
 		logger.Errorf("failed to initialize Action Cable connection: %v", err)
 		return nil, nil

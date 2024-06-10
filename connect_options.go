@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 )
 
 type connectOptions struct {
@@ -25,10 +25,10 @@ const (
 	defaultReceiveTimeout   = 1000
 )
 
-func parseOptions(rt *goja.Runtime, inOpts goja.Value) (*connectOptions, error) {
+func parseOptions(rt *sobek.Runtime, inOpts sobek.Value) (*connectOptions, error) {
 	var outOpts connectOptions
 
-	if inOpts == nil || goja.IsUndefined(inOpts) || goja.IsNull(inOpts) {
+	if inOpts == nil || sobek.IsUndefined(inOpts) || sobek.IsNull(inOpts) {
 		return &outOpts, nil
 	}
 
