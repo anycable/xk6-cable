@@ -7,15 +7,31 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+## [0.8.0]
+
+### Changed
+
+- Change to using sobek instead of goja ([@mstoykov])
+
+### Fixed
+
+- return error if no welcome message received. ([@palkan])
+
 ## [0.7.0]
+
+### Added
 
 - Add `channel.ackDuration()` to get the number of milliseconds to wait for a subscription confirmation/rejection. ([@palkan][])
 
 - Add `client.subscribeAsync` to issue a `subscribe` command without waiting for the confirmation. ([@palkan][])
 
+### Fixed
+
 - Fix `k6` / Logrus compatibility issue. ([@palkan][])
 
 ## [0.6.0]
+
+### Added
 
 - Add JS helpers.
 
@@ -41,6 +57,8 @@ export default function () {
 
 ## [0.5.0]
 
+### Added
+
 - Add `__timestamp__` field to incoming messages with the receive time (as UTC milliseconds). ([@palkan][])
 
 This should be used to determine the actual time when the message was received (not when it reached JS runtime).
@@ -51,6 +69,8 @@ This makes it possible to use shared data along with `onMessage` callbacks.
 Without wrapping code into `client.Loop`, JS runtime race conditions could occur.
 
 ## [0.4.0]
+
+### Added
 
 - Add `channel.OnMessage` to process incoming messages asynchronously. ([@SlayerDF][])
 
@@ -100,11 +120,16 @@ Without wrapping code into `client.Loop`, JS runtime race conditions could occur
 
 - Initial implementation. ([@skryukov], [@palkan])
 
-[@skryukov]: https://github.com/skryukov
+[@mstoykov]: https://github.com/mstoykov
 [@palkan]: https://github.com/palkan
+[@skryukov]: https://github.com/skryukov
 [@SlayerDF]: https://github.com/SlayerDF
 
-[Unreleased]: https://github.com/anycable/xk6-cable/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/anycable/xk6-cable/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/anycable/xk6-cable/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/anycable/xk6-cable/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/anycable/xk6-cable/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/anycable/xk6-cable/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/anycable/xk6-cable/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/anycable/xk6-cable/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/anycable/xk6-cable/compare/v0.1.0...v0.2.0
